@@ -1,9 +1,15 @@
 python -m pip install --upgrade pip
+
 python -m venv petbuddy-env
+
 source petbuddy-env/bin/activate
+
 mkdir petbuddy
+
 cd petbuddy
+
 mkdir backend
+
 cd backend
 
 //pip install -r requirements.txt
