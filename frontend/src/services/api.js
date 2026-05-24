@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000';
-
+const API_URL = import.meta.env.VITE_BACKEND_URL || 'https://petbuddy-production-b407.up.railway.app';
 const api = axios.create({
   baseURL: API_URL,
   headers: {
