@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+.expo/
+__pycache__/
+*.pyc
+venv/
+env/
+petbuddy-env/
+
+# Environment variables
+.env
+.env.local
+
+# Build outputs
+dist/
+build/
+.next/
+
+# OS files
+.DS_Store
+Thumbs.db
