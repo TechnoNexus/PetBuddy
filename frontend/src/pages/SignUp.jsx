@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Paper, Typography, TextField, Button, Divider, Stack, Snackbar, Alert } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
@@ -8,13 +8,20 @@ import { supabase } from '../supabaseClient';
 
 const SignUp = () => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const { user, signup } = useAuth();
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '', password: '', confirmPassword: '', firstName: '', lastName: ''
   });
+
+  // Auto-redirect if already logged in (e.g. after Google OAuth redirect)
+  useEffect(() => {
+    if (user) {
+      navigate('/home');
+    }
+  }, [user, navigate]);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 

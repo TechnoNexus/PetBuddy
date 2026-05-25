@@ -23,5 +23,6 @@ PetBuddy utilizes a modern, decoupled architecture allowing for rapid UI iterati
 - **WebSockets**: Integrated directly into FastAPI (`@app.websocket`) using a custom `ConnectionManager` to broadcast messages.
 
 ## Data Flow
-1. **REST API**: The frontend uses `fetch`/`axios` to hit the `/api/*` endpoints on FastAPI (running on port 8000).
-2. **Real-time Chat**: The frontend establishes a persistent connection to `ws://localhost:8000/ws/chat`. Messages are piped through the FastAPI `ConnectionManager` and broadcast back to connected clients.
+1. **REST API**: The frontend uses `fetch`/`axios` to hit the `/api/*` endpoints on the live FastAPI backend (hosted on Railway).
+2. **Real-time Chat**: The frontend establishes a persistent connection to the live WebSocket server. Messages are piped through the FastAPI `ConnectionManager` and broadcast back to connected clients.
+3. **Mobile App**: Connects directly to the live Railway backend using environment variables (`EXPO_PUBLIC_BACKEND_URL`).

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createPet } from '../services/api';
 import {
   Box,
   TextField,
@@ -51,17 +52,14 @@ const AddPetForm = () => {
     });
 
     try {
-      const response = await fetch('http://localhost:8000/api/pets/', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await response.json();
+      const response = await createPet(formData);
+      const data = response.data;
+      
       setOpenSnackbar(true);
 
-      // Updated navigation using the correct data structure
+      // Navigate to the newly created pet
       setTimeout(() => {
-        navigate(`/pets/${data.data.id}`);
+        navigate(`/pets/${data.id}`);
       }, 2000);
     } catch (error) {
       console.error('Error creating pet:', error);

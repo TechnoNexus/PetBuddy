@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import AdoptionForm from '../components/AdoptionForm';
+import { getPets } from '../services/api';
 import {
   Container,
   Grid,
@@ -17,52 +18,27 @@ import {
 
 const Adoption = () => {
 
-  const [pets] = useState([
-    {
-      id: 1,
-      name: "Max",
-      species: "Dog",
-      breed: "Golden Retriever",
-      age: 2,
-      description: "Friendly and energetic dog, great with kids",
-      image: "https://via.placeholder.com/300",
-      vaccinated: true,
-      neutered: true
-    },
-    {
-      id: 2,
-      name: "Luna",
-      species: "Cat",
-      breed: "Siamese",
-      age: 1,
-      description: "Gentle and loving cat, perfect for a quiet home",
-      image: "https://via.placeholder.com/300",
-      vaccinated: true,
-      neutered: false
-    },
-    {
-      id: 3,
-      name: "Rocky",
-      species: "Dog",
-      breed: "German Shepherd",
-      age: 4,
-      description: "Loyal and protective, great guard dog",
-      image: "https://via.placeholder.com/300",
-      vaccinated: true,
-      neutered: true
-    },
-    {
-      id: 4,
-      name: "Milo",
-      species: "Cat",
-      breed: "Persian",
-      age: 1,
-      description: "Playful and affectionate kitten",
-      image: "https://via.placeholder.com/300",
-      vaccinated: true,
-      neutered: false
-    }
-  ]);
+  const [pets, setPets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPets = async () => {
+      try {
+        const response = await getPets();
+        const data = response.data.pets || [];
+        const mappedPets = data.map(pet => ({
+          ...pet,
+          image: pet.photos && pet.photos.length > 0 ? pet.photos[0].url : "https://via.placeholder.com/300",
+        }));
+        setPets(mappedPets);
+      } catch (error) {
+        console.error("Failed to fetch pets:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPets();
+  }, []);
 
   const [filteredPets, setFilteredPets] = useState(pets);
 const [filters, setFilters] = useState({
@@ -134,72 +110,78 @@ const [isFormOpen, setIsFormOpen] = useState(false);
       </Grid>
 
       {/* Pet Grid */}
-      <Grid container spacing={4}>
-        {filteredPets.map((pet) => (
-          <Grid item key={pet.id} xs={12} sm={6} md={4}>
-            <Card sx={{
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              transition: '0.3s',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: 6
-              }
-            }}>
-              <CardMedia
-                component="img"
-                height="250"
-                image={pet.image}
-                alt={pet.name}
-              />
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Typography gutterBottom variant="h5" component="h2">
-                  {pet.name}
-                </Typography>
-                <Typography variant="subtitle1" color="text.secondary">
-                  {pet.breed} • {pet.age} {pet.age === 1 ? 'year' : 'years'} old
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                  {pet.description}
-                </Typography>
-                <Box sx={{ mb: 2 }}>
-                  {pet.vaccinated && (
-                    <Chip
-                      label="Vaccinated"
-                      color="success"
-                      sx={{ mr: 1 }}
-                    />
-                  )}
-                  {pet.neutered && (
-                    <Chip
-                      label="Neutered"
-                      color="info"
-                    />
-                  )}
-                </Box>
-              </CardContent>
-              <CardActions>
-                <Button
-  size="large"
-  variant="contained"
-  fullWidth
-  sx={{
-    borderRadius: 2,
-    py: 1
-  }}
-  onClick={() => {
-    setSelectedPet(pet);
-    setIsFormOpen(true);
-  }}
->
-  Adopt Me
-</Button>
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      {loading ? (
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant="h6" color="text.secondary">Loading pets...</Typography>
+        </Box>
+      ) : (
+        <Grid container spacing={4}>
+          {filteredPets.map((pet) => (
+            <Grid item key={pet.id} xs={12} sm={6} md={4}>
+              <Card sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: '0.3s',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 6
+                }
+              }}>
+                <CardMedia
+                  component="img"
+                  height="250"
+                  image={pet.image}
+                  alt={pet.name}
+                />
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Typography gutterBottom variant="h5" component="h2">
+                    {pet.name}
+                  </Typography>
+                  <Typography variant="subtitle1" color="text.secondary">
+                    {pet.breed || pet.species} • {pet.age} {pet.age === 1 ? 'year' : 'years'} old
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 2 }}>
+                    {pet.description}
+                  </Typography>
+                  <Box sx={{ mb: 2 }}>
+                    {pet.vaccinated && (
+                      <Chip
+                        label="Vaccinated"
+                        color="success"
+                        sx={{ mr: 1 }}
+                      />
+                    )}
+                    {pet.neutered && (
+                      <Chip
+                        label="Neutered"
+                        color="info"
+                      />
+                    )}
+                  </Box>
+                </CardContent>
+                <CardActions>
+                  <Button
+                    size="large"
+                    variant="contained"
+                    fullWidth
+                    sx={{
+                      borderRadius: 2,
+                      py: 1
+                    }}
+                    onClick={() => {
+                      setSelectedPet(pet);
+                      setIsFormOpen(true);
+                    }}
+                  >
+                    Adopt Me
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
       <AdoptionForm
   open={isFormOpen}
   handleClose={() => setIsFormOpen(false)}

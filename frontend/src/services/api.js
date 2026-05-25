@@ -1,6 +1,10 @@
 import axios from 'axios';
+import { supabase } from '../supabaseClient';
 
-const API_URL = import.meta.env.VITE_BACKEND_URL || 'https://petbuddy-production-b407.up.railway.app';
+// Use local backend during development, Railway in production
+const isDev = import.meta.env.DEV;
+const API_URL = isDev ? 'http://localhost:8000' : (import.meta.env.VITE_BACKEND_URL || 'https://petbuddy-production-b407.up.railway.app');
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -8,22 +12,37 @@ const api = axios.create({
   },
 });
 
-export const getPets = () => api.get('/pets');
-export const createPet = (petData) => api.post('/pets', petData);
-export const getPetById = (id) => api.get(`/pets/${id}`);
-export const updatePet = (id, petData) => api.put(`/pets/${id}`, petData);
-export const deletePet = (id) => api.delete(`/pets/${id}`);
+// Add a request interceptor to inject the Supabase JWT
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
+});
+
+// Pets endpoints
+export const getPets = (params) => api.get('/api/pets/', { params });
+export const getFeaturedPets = () => api.get('/api/pets/', { params: { limit: 3 } });
+export const createPet = (petData) => api.post('/api/pets/', petData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
+export const getPetById = (id) => api.get(`/api/pets/${id}`);
+export const updatePet = (id, petData) => api.put(`/api/pets/${id}`, petData);
+export const deletePet = (id) => api.delete(`/api/pets/${id}`);
+
+// Users profile endpoints
+export const getMyProfile = () => api.get('/api/users/me');
+export const updateProfile = (profileData) => api.put('/api/users/profile', profileData);
+
+// Store endpoints
+export const getProducts = (params) => api.get('/api/store/products', { params });
+
 export const chatApi = {
-  getConversations: () => api.get('/conversations'),
-
-  getMessages: (conversationId) =>
-    api.get(`/conversations/${conversationId}/messages`),
-
-  sendMessage: (conversationId, message) =>
-    api.post(`/conversations/${conversationId}/messages`, { message }),
-
-  markAsRead: (conversationId) =>
-    api.put(`/conversations/${conversationId}/read`)
+  getConversations: () => api.get('/api/chat/conversations'),
+  getMessages: (conversationId) => api.get(`/api/chat/conversations/${conversationId}/messages`),
+  sendMessage: (conversationId, message) => api.post(`/api/chat/conversations/${conversationId}/messages`, { message }),
+  markAsRead: (conversationId) => api.put(`/api/chat/conversations/${conversationId}/read`)
 };
 
 export default api;

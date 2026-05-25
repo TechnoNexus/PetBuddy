@@ -64,3 +64,24 @@ Open a new terminal window, and run:
 cd mobile
 npx expo start
 ```
+
+## Production Deployment
+
+### Backend (Railway)
+1. Add a `Procfile` to the root `backend` directory.
+2. Deploy the `/backend` folder to Railway.
+3. Make sure to set the `ACCESS_TOKEN_EXPIRE_MINUTES`, `JWT_ALGORITHM`, `SECRET_KEY`, and `GEMINI_API_KEY` environment variables in the Railway dashboard.
+
+### Frontend (Cloudflare Pages)
+1. Ensure the `_redirects` file is in the `frontend/public` directory to support React Router.
+2. Set the `VITE_BACKEND_URL` environment variable to the Railway backend URL in the Cloudflare Pages settings.
+3. Deploy the `/frontend` folder to Cloudflare Pages using `npm run build` and `dist` as the output directory.
+
+### Mobile App (Google Play Store)
+1. Update `EXPO_PUBLIC_BACKEND_URL` in `mobile/.env` to the Railway backend URL.
+2. Ensure you have the `release.keystore` and the signing configuration in `android/app/build.gradle`.
+3. To build the release `.aab` for the Play Store, run:
+   ```bash
+   cd mobile/android
+   ./gradlew clean bundleRelease
+   ```

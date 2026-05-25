@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { getPetById } from '../services/api';
 import {
   Container,
   Grid,
@@ -20,32 +21,50 @@ const PetDetail = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  const pet = {
-    id,
-    name: "Max",
-    species: "Dog",
-    breed: "Golden Retriever",
-    age: 2,
-    description: "Friendly and energetic dog, great with kids. Loves to play fetch and go for long walks. Already trained in basic commands.",
-    images: [
-      "https://via.placeholder.com/800x600",
-      "https://via.placeholder.com/800x600",
-      "https://via.placeholder.com/800x600"
-    ],
-    details: {
-      weight: "30kg",
-      color: "Golden",
-      gender: "Male",
-      trained: "Yes",
-      health: "Excellent"
-    },
-    owner: {
-      id: 1,
-      name: "John Doe",
-      rating: 4.8,
-      responseTime: "Usually responds within 1 hour"
-    }
-  };
+  const [pet, setPet] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPet = async () => {
+      try {
+        const response = await getPetById(id);
+        const data = response.data;
+        
+        // Map backend response to UI structure
+        setPet({
+          id: data.id,
+          name: data.name,
+          species: data.species,
+          breed: data.breed || data.species,
+          age: data.age,
+          description: data.description,
+          images: data.photos && data.photos.length > 0 
+            ? data.photos.map(p => p.url) 
+            : ["https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800"],
+          details: {
+            weight: data.weight ? `${data.weight} kg` : "Unknown",
+            color: data.color || "Unknown",
+            gender: data.gender || "Unknown",
+            trained: data.trained ? "Yes" : "No",
+            health: data.health_info || "Excellent"
+          },
+          vaccinated: data.vaccinated,
+          neutered: data.neutered,
+          owner: {
+            id: data.owner_id,
+            name: data.owner?.first_name || "Shelter",
+            rating: 4.8,
+            responseTime: "Usually responds within 1 hour"
+          }
+        });
+      } catch (error) {
+        console.error("Failed to fetch pet details:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPet();
+  }, [id]);
 
   const handleAdoptClick = () => {
     setIsFormOpen(true);
@@ -60,6 +79,23 @@ const PetDetail = () => {
     }
   });
 };
+
+  if (loading) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 10, textAlign: 'center' }}>
+        <Typography variant="h5" color="text.secondary">Loading pet details...</Typography>
+      </Container>
+    );
+  }
+
+  if (!pet) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 10, textAlign: 'center' }}>
+        <Typography variant="h5" color="error">Pet not found</Typography>
+        <Button sx={{ mt: 2 }} variant="outlined" onClick={() => navigate('/pets')}>Back to Pets</Button>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -102,8 +138,8 @@ const PetDetail = () => {
             </Typography>
 
             <Box sx={{ my: 2 }}>
-              <Chip label="Vaccinated" color="success" sx={{ mr: 1 }} />
-              <Chip label="Neutered" color="info" />
+              {pet.vaccinated && <Chip label="Vaccinated" color="success" sx={{ mr: 1 }} />}
+              {pet.neutered && <Chip label="Neutered" color="info" />}
             </Box>
 
             <Typography variant="body1" paragraph>

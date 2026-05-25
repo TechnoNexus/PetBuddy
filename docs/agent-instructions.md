@@ -24,3 +24,8 @@ Welcome, AI Agent! If you are working on the PetBuddy repository, please adhere 
 - Never use `cat` to create files via shell commands. Use your native `write_to_file` tools.
 - If you need to install a new npm package, do it specifically inside the `/frontend/` directory.
 - If you need to install a new pip package, do it specifically inside the `/backend/` directory using the activated environment.
+
+## 5. Mobile App Rules (CRITICAL)
+- **Do not use `@expo/ui`**. It is highly experimental and will cause `NoClassDefFoundError: ComposeViewFunctionDefinitionBuilder` crashes when building Release apps for the Play Store.
+- If you encounter an `OTEL_PKG` Hermes compilation error when building the app, ensure `@supabase/supabase-js` is downgraded to `2.39.3` or lower.
+- To prevent missing dependency errors, always generate release builds directly via the terminal (`.\gradlew bundleRelease`) rather than relying on Android Studio's graphical interface.

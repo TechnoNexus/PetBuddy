@@ -19,7 +19,12 @@ This document outlines the strategic plan for PetBuddy's evolution from a protot
 - [ ] **Adoption Workflow**: Add a formal application submission system with status tracking (Pending, Approved, Denied).
 - [ ] **Shelter Accounts**: Create RBAC (Role-Based Access Control) to differentiate between regular Adopters and Shelter Admins.
 
-## Phase 4: DevOps & Production
-- [ ] **Containerization**: Create a root `docker-compose.yml` to spin up the entire stack seamlessly.
-- [ ] **CI/CD Pipelines**: Implement GitHub Actions for automated linting, testing, and deployment.
-- [ ] **Deployment**: Deploy the frontend to Vercel/Netlify, and the FastAPI backend to Render or AWS.
+## Phase 4: DevOps & Production (Completed)
+- [x] **Containerization**: Created a `Procfile` and `requirements.txt` specifically optimized for Railway.
+- [x] **Deployment**: Deployed the frontend to Cloudflare Pages, and the FastAPI backend to Railway.
+- [x] **Mobile Release**: Generated a production `.aab` Android build for the Google Play Store using Expo and Gradle.
+
+## Phase 5: On-Device AI (Future)
+- [ ] **Custom Expo Module**: Create a native Kotlin bridge connecting React Native to Android's native OS capabilities.
+- [ ] **MediaPipe SDK**: Integrate the Google MediaPipe LLM Inference API to download and run the Gemma model directly on the phone's GPU.
+- [ ] **AICore Integration**: Add support for Android 14+ AICore to natively tap into Gemini Nano on supported devices (e.g., Pixel 8 Pro, Galaxy S24) for zero-cost, offline AI features.

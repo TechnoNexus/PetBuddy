@@ -9,3 +9,5 @@ passlib[bcrypt]
 python-dotenv
 google-genai
 ddgs
+supabase
+pydantic[email]

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getFeaturedPets } from '../services/api';
 import {
   Container,
   Typography,
@@ -22,11 +23,27 @@ const Home = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useState({ species: '', location: '' });
 
-  const featuredPets = [
-    { id: 1, name: "Luna", image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=800", breed: "Siamese Cat", age: 1 },
-    { id: 2, name: "Max", image: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800", breed: "Golden Retriever", age: 2 },
-    { id: 3, name: "Bella", image: "https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&q=80&w=800", breed: "Persian Cat", age: 3 }
-  ];
+  const [featuredPets, setFeaturedPets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        const response = await getFeaturedPets();
+        const petsData = response.data.pets || [];
+        const mappedPets = petsData.map(pet => ({
+          ...pet,
+          image: pet.photos && pet.photos.length > 0 ? pet.photos[0].url : "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800",
+        }));
+        setFeaturedPets(mappedPets);
+      } catch (error) {
+        console.error('Failed to fetch featured pets:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFeatured();
+  }, []);
 
   return (
     <Box className="animate-fade-in">
@@ -78,21 +95,25 @@ const Home = () => {
           <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>Featured Pets</Typography>
           <Typography variant="subtitle1" color="text.secondary">Meet our adorable companions waiting for a home</Typography>
         </Box>
-        <Grid container spacing={4}>
-          {featuredPets.map((pet) => (
-            <Grid item key={pet.id} xs={12} sm={6} md={4}>
-              <Card className="hover-lift" sx={{ borderRadius: '24px', overflow: 'hidden', border: 'none', cursor: 'pointer' }} onClick={() => navigate(`/pets/${pet.id}`)}>
-                <CardMedia component="img" height="280" image={pet.image} alt={pet.name} />
-                <CardContent sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{pet.name}</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>
-                    {pet.breed} • {pet.age} yrs
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        {loading ? (
+          <Typography align="center" color="text.secondary">Loading featured pets...</Typography>
+        ) : (
+          <Grid container spacing={4}>
+            {featuredPets.map((pet) => (
+              <Grid item key={pet.id} xs={12} sm={6} md={4}>
+                <Card className="hover-lift" sx={{ borderRadius: '24px', overflow: 'hidden', border: 'none', cursor: 'pointer' }} onClick={() => navigate(`/pets/${pet.id}`)}>
+                  <CardMedia component="img" height="280" image={pet.image} alt={pet.name} />
+                  <CardContent sx={{ p: 3, textAlign: 'center' }}>
+                    <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{pet.name}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>
+                      {pet.breed || pet.species} • {pet.age} yrs
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        )}
       </Container>
 
       {/* Info Sections */}

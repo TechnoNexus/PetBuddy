@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getPets } from '../services/api';
 import {
   Container,
   Grid,
@@ -20,26 +21,27 @@ const Pets = () => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState({ species: '', breed: '', age: '', location: '' });
 
-  const [pets, setPets] = useState([
-    { id: 1, name: "Max", species: "Dog", breed: "Golden Retriever", age: 2, description: "Friendly and energetic dog, great with kids", image: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800", vaccinated: true, neutered: true },
-    { id: 2, name: "Luna", species: "Cat", breed: "Siamese", age: 1, description: "Gentle and loving cat, perfect for a quiet home", image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=800", vaccinated: true, neutered: false },
-    { id: 3, name: "Rocky", species: "Dog", breed: "German Shepherd", age: 4, description: "Loyal and protective, great guard dog", image: "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&q=80&w=800", vaccinated: true, neutered: true }
-  ]);
+  const [pets, setPets] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPets = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/pets/');
-        const data = await response.json();
-        const backendPets = data.pets.map(pet => ({
+        const response = await getPets();
+        // Extract pets array from response (PetListResponse schema)
+        const petsData = response.data.pets || [];
+        
+        // Map over them to ensure image structure is handled correctly if needed by PetCard
+        const mappedPets = petsData.map(pet => ({
           ...pet,
-          image: pet.photos?.[0] || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800",
-          vaccinated: true,
-          neutered: true
+          image: pet.photos && pet.photos.length > 0 ? pet.photos[0].url : "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800",
         }));
-        setPets(prevPets => [...prevPets, ...backendPets]);
+        
+        setPets(mappedPets);
       } catch (error) {
         console.log('Error fetching pets:', error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchPets();
@@ -122,7 +124,11 @@ const Pets = () => {
         </Paper>
 
         {/* Pet Cards Grid */}
-        {filteredPets.length === 0 ? (
+        {loading ? (
+          <Box sx={{ textAlign: 'center', py: 10 }}>
+            <Typography variant="h6" color="text.secondary">Loading pets...</Typography>
+          </Box>
+        ) : filteredPets.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 10 }}>
             <Typography variant="h5" color="text.secondary">No pets found matching your criteria.</Typography>
             <Button variant="text" onClick={clearFilters} sx={{ mt: 2 }}>Clear Filters</Button>
