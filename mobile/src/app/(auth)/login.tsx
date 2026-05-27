@@ -31,8 +31,8 @@ export default function LoginScreen() {
 
   const handleOAuth = async (provider) => {
     try {
-      // Creates exp://... in dev, or mobile://... in prod
-      const redirectUrl = Linking.createURL('/(tabs)');
+      // Use the root deep link which is guaranteed to match the scheme exactly
+      const redirectUrl = Linking.createURL('/');
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: provider,
@@ -46,27 +46,44 @@ export default function LoginScreen() {
 
       if (data?.url) {
         const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+        
         if (result.type === 'success' && result.url) {
-          // Extract the tokens from the deep link URL hash fragment
-          const hashMatch = result.url.match(/#(.+)/);
-          if (hashMatch) {
-            // URLSearchParams is globally available in React Native 0.70+
-            // Wait, URLSearchParams parsing a hash string might behave differently on older RN.
-            // Let's do a safe manual parse:
-            const paramsString = hashMatch[1];
-            const paramsArray = paramsString.split('&');
-            const paramsObj = {};
-            paramsArray.forEach(pair => {
-                const [key, value] = pair.split('=');
-                paramsObj[key] = value;
-            });
-            
-            const { access_token, refresh_token } = paramsObj;
-            if (access_token && refresh_token) {
-               await supabase.auth.setSession({ access_token, refresh_token });
-               router.replace('/(tabs)');
+          // Sometimes the URL comes back with the token in the hash, sometimes in query params
+          const urlObj = Linking.parse(result.url);
+          
+          // Fallback manual hash parsing if Linking.parse misses it
+          let accessToken = urlObj.queryParams?.access_token;
+          let refreshToken = urlObj.queryParams?.refresh_token;
+          
+          if (!accessToken) {
+            const hashMatch = result.url.match(/#(.+)/);
+            if (hashMatch) {
+              const paramsString = hashMatch[1];
+              const paramsArray = paramsString.split('&');
+              paramsArray.forEach(pair => {
+                  const [key, value] = pair.split('=');
+                  if (key === 'access_token') accessToken = value;
+                  if (key === 'refresh_token') refreshToken = value;
+              });
             }
           }
+
+          if (accessToken && refreshToken) {
+             const { error: sessionError } = await supabase.auth.setSession({ 
+               access_token: accessToken, 
+               refresh_token: refreshToken 
+             });
+             
+             if (sessionError) {
+               Alert.alert('Session Error', sessionError.message);
+             } else {
+               router.replace('/(tabs)');
+             }
+          } else {
+             Alert.alert('Authentication Failed', 'Could not find access token in the redirect URL.\nURL: ' + result.url);
+          }
+        } else if (result.type !== 'cancel' && result.type !== 'dismiss') {
+          Alert.alert('Auth Session Result', 'Type: ' + result.type);
         }
       }
     } catch (error) {

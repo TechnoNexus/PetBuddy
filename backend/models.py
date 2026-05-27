@@ -116,6 +116,7 @@ class Pet(Base):
     owner_id = Column(
         UUID(as_uuid=True), ForeignKey("app_users.id"), nullable=True
     )
+    external_url = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
