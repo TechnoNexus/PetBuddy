@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from sqlalchemy import inspect, text
 
 from database import engine, Base
 
@@ -28,6 +29,26 @@ from admin import router as admin_router
 load_dotenv()
 
 
+def ensure_schema_compatibility():
+    """
+    Apply small additive compatibility fixes for deployed prototype databases.
+    This keeps existing Railway/Supabase tables aligned until Alembic exists.
+    """
+    try:
+        inspector = inspect(engine)
+        if "pets" not in inspector.get_table_names():
+            return
+
+        pet_columns = {column["name"] for column in inspector.get_columns("pets")}
+        if "external_url" not in pet_columns:
+            print("[PetBuddy] Adding missing pets.external_url column...")
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE pets ADD COLUMN external_url VARCHAR"))
+            print("[PetBuddy] pets.external_url column ready.")
+    except Exception as e:
+        print(f"[PetBuddy] Schema compatibility check skipped: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -36,6 +57,7 @@ async def lifespan(app: FastAPI):
     """
     print("[PetBuddy] Creating database tables if they don't exist...")
     Base.metadata.create_all(bind=engine)
+    ensure_schema_compatibility()
     print("[PetBuddy] Database tables ready.")
     yield
     print("[PetBuddy] Shutting down...")

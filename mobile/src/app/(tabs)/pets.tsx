@@ -1,29 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, TextInput, ActivityIndicator, Platform, Linking, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, TextInput, ActivityIndicator, Switch } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
+import { getApiBase } from '../../services/apiBase';
 
-function getApiBase() {
-  // Web browser is always on the same machine as the backend
-  if (Platform.OS === 'web') return 'http://localhost:8000';
-  // Mobile: use explicit public tunnel URL if set (for tunnel mode)
-  const publicUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
-  if (publicUrl) {
-    console.log('[PetBuddy] Using EXPO_PUBLIC_BACKEND_URL:', publicUrl);
-    return publicUrl;
-  }
-  // LAN mode: extract IP from Expo host
-  const host =
-    Constants.expoConfig?.hostUri ||
-    (Constants as any).manifest?.debuggerHost ||
-    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost ||
-    null;
-  const isTunnel = host?.includes('.exp.direct') || host?.includes('exp.host');
-  const ip = (!isTunnel && host) ? host.split(':')[0] : '10.0.0.45';
-  const base = `http://${ip}:8000`;
-  console.log('[PetBuddy] API_BASE ->', base);
-  return base;
+type ScavengedPet = {
+  id?: string;
+  image?: string;
+  name?: string;
+  location?: string;
+  description?: string;
+};
+
+function paramToString(value: string | string[] | undefined) {
+  return Array.isArray(value) ? (value[0] || '') : (value || '');
 }
 
 const petsData = [
@@ -39,21 +29,23 @@ export default function PetsScreen() {
   const params = useLocalSearchParams();
   
   const [filters, setFilters] = useState({
-    species: params.species || '',
+    species: paramToString(params.species),
     breed: '',
     age: '',
-    location: params.location || ''
+    location: paramToString(params.location)
   });
 
   const [filteredPets, setFilteredPets] = useState(petsData);
   const [aiMode, setAiMode] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiResults, setAiResults] = useState([]);
+  const [aiResults, setAiResults] = useState<ScavengedPet[]>([]);
+  const [aiError, setAiError] = useState('');
 
   const searchAiPets = async () => {
     if (!aiQuery.trim()) return;
     setAiLoading(true);
+    setAiError('');
     const apiBase = getApiBase();
     console.log('[PetBuddy] Calling:', `${apiBase}/api/ai/scavenge`);
     try {
@@ -69,19 +61,29 @@ export default function PetsScreen() {
         signal: controller.signal,
       });
       clearTimeout(timeout);
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || `Search failed with status ${response.status}`);
+      }
       console.log('[PetBuddy] AI results count:', data.results?.length);
-      if (data.results) setAiResults(data.results);
-    } catch (e) {
+      setAiResults(Array.isArray(data.results) ? data.results : []);
+    } catch (e: any) {
       console.error(e);
+      setAiError(
+        e?.name === 'AbortError'
+          ? 'Search timed out. Please try a more specific search.'
+          : (e?.message || 'Failed to search pets. Please try again.')
+      );
     } finally {
       setAiLoading(false);
     }
   };
 
   useEffect(() => {
-    if (params.species && typeof params.species === 'string') setFilters(f => ({ ...f, species: params.species }));
-    if (params.location && typeof params.location === 'string') setFilters(f => ({ ...f, location: params.location }));
+    const species = paramToString(params.species);
+    const location = paramToString(params.location);
+    if (species) setFilters(f => ({ ...f, species }));
+    if (location) setFilters(f => ({ ...f, location }));
   }, [params]);
 
   useEffect(() => {
@@ -156,25 +158,28 @@ export default function PetsScreen() {
               <Text style={{ marginTop: 15, color: '#64748b' }}>Scavenging the internet for pets...</Text>
             </View>
           ) : (
-            aiResults.map((pet, index) => (
-              <TouchableOpacity
-                key={pet.id || index}
-                style={styles.card}
-                onPress={() => router.push({ pathname: '/scavenge-detail', params: { item: encodeURIComponent(JSON.stringify(pet)) } })}
-              >
-                <Image source={{ uri: pet.image || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&q=80" }} style={styles.cardImage} />
-                <View style={styles.cardContent}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={styles.petName} numberOfLines={1}>{pet.name}</Text>
-                      <View style={styles.adoptButton}>
-                        <Text style={styles.adoptButtonText}>View Details</Text>
-                      </View>
+            <>
+              {aiError ? <Text style={styles.errorText}>{aiError}</Text> : null}
+              {aiResults.map((pet, index) => (
+                <TouchableOpacity
+                  key={pet.id || index}
+                  style={styles.card}
+                  onPress={() => router.push({ pathname: '/scavenge-detail', params: { item: encodeURIComponent(JSON.stringify(pet)) } })}
+                >
+                  <Image source={{ uri: pet.image || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&q=80" }} style={styles.cardImage} />
+                  <View style={styles.cardContent}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={styles.petName} numberOfLines={1}>{pet.name}</Text>
+                        <View style={styles.adoptButton}>
+                          <Text style={styles.adoptButtonText}>View Details</Text>
+                        </View>
+                    </View>
+                    <Text style={styles.petLocation}>{pet.location}</Text>
+                    <Text style={styles.petDesc} numberOfLines={2}>{pet.description}</Text>
                   </View>
-                  <Text style={styles.petLocation}>{pet.location}</Text>
-                  <Text style={styles.petDesc} numberOfLines={2}>{pet.description}</Text>
-                </View>
-              </TouchableOpacity>
-            ))
+                </TouchableOpacity>
+              ))}
+            </>
           )
         ) : filteredPets.length === 0 ? (
           <View style={{ alignItems: 'center', marginTop: 40 }}>
@@ -218,6 +223,7 @@ const styles = StyleSheet.create({
   aiSearchBox: { flexDirection: 'row', backgroundColor: 'white', marginHorizontal: 20, borderRadius: 16, padding: 5, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 5, marginBottom: 20 },
   aiInput: { flex: 1, paddingVertical: 12, paddingHorizontal: 15, fontSize: 16, color: '#1e293b' },
   aiSearchBtn: { backgroundColor: '#7c3aed', padding: 12, borderRadius: 12, marginLeft: 5 },
+  errorText: { color: '#f43f5e', textAlign: 'center', marginHorizontal: 20, marginBottom: 20, fontWeight: '600' },
   card: { marginHorizontal: 20, marginBottom: 20, backgroundColor: 'white', borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
   cardImage: { width: '100%', height: 250 },
   cardContent: { padding: 20 },

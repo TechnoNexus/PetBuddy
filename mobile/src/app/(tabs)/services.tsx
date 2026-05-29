@@ -1,33 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image, ActivityIndicator, Platform, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image, ActivityIndicator, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
+import { getApiBase } from '../../services/apiBase';
 
-function getApiBase() {
-  if (Platform.OS === 'web') return 'http://localhost:8000';
-  const publicUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
-  if (publicUrl) {
-    console.log('[PetBuddy] Using EXPO_PUBLIC_BACKEND_URL:', publicUrl);
-    return publicUrl;
-  }
-  const host =
-    Constants.expoConfig?.hostUri ||
-    (Constants as any).manifest?.debuggerHost ||
-    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost ||
-    null;
-  const isTunnel = host?.includes('.exp.direct') || host?.includes('exp.host');
-  const ip = (!isTunnel && host) ? host.split(':')[0] : '10.0.0.45';
-  const base = `http://${ip}:8000`;
-  console.log('[PetBuddy] Services API_BASE ->', base);
-  return base;
-}
+type ServiceResult = {
+  id?: string;
+  image?: string;
+  name?: string;
+  location?: string;
+  description?: string;
+  url?: string;
+};
 
 export default function ServicesScreen() {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<ServiceResult[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
 
   const searchServices = async () => {
@@ -49,20 +39,25 @@ export default function ServicesScreen() {
         signal: controller.signal,
       });
       clearTimeout(timeout);
-      const data = await response.json();
-      console.log('[PetBuddy] Services results count:', data.results?.length);
-      if (data.results) {
-        setResults(data.results);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || `Search failed with status ${response.status}`);
       }
-    } catch (e) {
+      console.log('[PetBuddy] Services results count:', data.results?.length);
+      setResults(Array.isArray(data.results) ? data.results : []);
+    } catch (e: any) {
       console.error(e);
-      setErrorMsg('Failed to search services. Make sure backend is running.');
+      setErrorMsg(
+        e?.name === 'AbortError'
+          ? 'Search timed out. Please try a more specific search.'
+          : (e?.message || 'Failed to search services. Please try again.')
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const openUrl = (url) => {
+  const openUrl = (url?: string) => {
     if (url) Linking.openURL(url);
   };
 

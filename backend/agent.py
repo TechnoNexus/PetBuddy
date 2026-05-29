@@ -43,8 +43,29 @@ def scavenge_pets(query: str):
         traceback.print_exc()
         return []
 
-    # Step 2: Image search — bulk search removed to search individually per pet later.
-
+    # Step 2: One bulk image search keeps the endpoint fast enough for mobile.
+    image_urls = []
+    try:
+        breed_img_query = f"{query} dog cat pet adoption photo shelter"
+        print(f"[Agent] Image search query: '{breed_img_query}'")
+        img_results = list(
+            DDGS().images(
+                breed_img_query,
+                max_results=12,
+                safesearch='moderate',
+                type_image='photo',
+            )
+        )
+        image_urls = [
+            r.get('image') for r in img_results
+            if r.get('image') and not any(
+                skip in r.get('image', '').lower()
+                for skip in ['logo', 'icon', 'banner', 'ad', 'food', 'ice']
+            )
+        ]
+        print(f"[Agent] DDG images returned {len(image_urls)} filtered results")
+    except Exception as e:
+        print(f"[Agent] DDG Image search failed (non-fatal): {e}")
 
     context = ""
     for r in raw_results:
@@ -107,7 +128,7 @@ Raw Search Results:
         data = json.loads(raw_text)
         print(f"[Agent] Extracted {len(data)} individual pet profiles")
 
-        # Assign specific images per pet
+        # Assign images without per-result network calls; those made mobile searches time out.
         fallback_images = [
             'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&q=80',
             'https://images.unsplash.com/photo-1574158622564-3d6afb141703?w=600&q=80',
@@ -116,51 +137,10 @@ Raw Search Results:
             'https://images.unsplash.com/photo-1548767797-d8c844163c4a?w=600&q=80',
             'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&q=80',
         ]
-        
-        import requests
-        import re
-
         for i, pet in enumerate(data):
-            try:
-                # First try to get the exact picture from the article URL
-                article_url = pet.get('url')
-                exact_image = None
-                
-                if article_url and article_url != 'Unknown':
-                    try:
-                        resp = requests.get(article_url, timeout=3, headers={'User-Agent': 'Mozilla/5.0'})
-                        match = re.search(r'<meta[^>]*property="og:image"[^>]*content="([^"]+)"', resp.text)
-                        if not match:
-                            match = re.search(r'<meta[^>]*content="([^"]+)"[^>]*property="og:image"', resp.text)
-                        if match:
-                            img_url = match.group(1).replace('&amp;', '&')
-                            # Check if it's likely a logo or banner
-                            skip_words = ['logo', 'icon', 'banner', 'avatar', 'default']
-                            if not any(word in img_url.lower() for word in skip_words):
-                                exact_image = img_url
-                                print(f"[Agent] Extracted exact og:image: {exact_image}")
-                    except Exception as req_e:
-                        print(f"[Agent] Failed to fetch og:image from {article_url}: {req_e}")
-
-                if exact_image:
-                    pet['image'] = exact_image
-                else:
-                    # Fallback to targeted search
-                    color = pet.get('color', '') if pet.get('color', '') != 'Unknown' else ''
-                    breed = pet.get('breed', '') if pet.get('breed', '') != 'Unknown' else ''
-                    species = pet.get('species', '') if pet.get('species', '') != 'Unknown' else ''
-                    age = pet.get('age', '').split()[0] if pet.get('age', '') != 'Unknown' else ''
-                    
-                    specific_query = f"{color} {breed} {species} {age} pet photo".strip()
-                    print(f"[Agent] Specific image query: '{specific_query}'")
-                    
-                    img_results = list(DDGS().images(specific_query, max_results=1, safesearch='moderate', type_image='photo'))
-                    if img_results and img_results[0].get('image'):
-                        pet['image'] = img_results[0].get('image')
-                    else:
-                        pet['image'] = fallback_images[i % len(fallback_images)]
-            except Exception as e:
-                print(f"[Agent] Failed specific image search for {pet.get('name')}: {e}")
+            if image_urls and i < len(image_urls):
+                pet['image'] = image_urls[i]
+            else:
                 pet['image'] = fallback_images[i % len(fallback_images)]
 
         return data
