@@ -19,6 +19,7 @@ PetBuddy utilizes a modern, decoupled architecture allowing for rapid UI iterati
 - **Framework**: FastAPI (Python). Highly performant, async-native framework.
 - **Authentication**: Supabase Auth (OAuth with Google/Facebook, Email/Password).
 - **Database**: PostgreSQL (hosted on Supabase), accessed via SQLAlchemy ORM.
+- **Storage**: Supabase Storage Buckets for persistent storage of user-uploaded images (avatars, pet photos) accessed via Supabase Python Client.
 - **WebSockets**: Integrated directly into FastAPI (`@app.websocket`) using a custom `ConnectionManager` to broadcast messages.
 
 ## Data Flow
