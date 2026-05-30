@@ -16,7 +16,11 @@ const api = axios.create({
 api.interceptors.request.use(async (config) => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`;
+    if (config.headers && config.headers.set) {
+      config.headers.set('Authorization', `Bearer ${session.access_token}`);
+    } else {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
+    }
   }
   return config;
 });
@@ -24,9 +28,7 @@ api.interceptors.request.use(async (config) => {
 // Pets endpoints
 export const getPets = (params) => api.get('/api/pets/', { params });
 export const getFeaturedPets = () => api.get('/api/pets/', { params: { limit: 3 } });
-export const createPet = (petData) => api.post('/api/pets/', petData, {
-  headers: { 'Content-Type': 'multipart/form-data' }
-});
+export const createPet = (petData) => api.post('/api/pets/', petData);
 export const getPetById = (id) => api.get(`/api/pets/${id}`);
 export const updatePet = (id, petData) => api.put(`/api/pets/${id}`, petData);
 export const deletePet = (id) => api.delete(`/api/pets/${id}`);
@@ -34,6 +36,7 @@ export const deletePet = (id) => api.delete(`/api/pets/${id}`);
 // Users profile endpoints
 export const getMyProfile = () => api.get('/api/users/me');
 export const updateProfile = (profileData) => api.put('/api/users/profile', profileData);
+export const uploadAvatar = (formData) => api.post('/api/users/avatar', formData);
 
 // Store endpoints
 export const getProducts = (params) => api.get('/api/store/products', { params });

@@ -8,6 +8,7 @@ import PetsIcon from '@mui/icons-material/Pets';
 import EmailIcon from '@mui/icons-material/Email';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PhoneIcon from '@mui/icons-material/Phone';
+import EditIcon from '@mui/icons-material/Edit';
 import { getMyAdoptionApplications } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -75,6 +76,27 @@ const Profile = () => {
     }
   };
 
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const preview = URL.createObjectURL(file);
+    setUserProfile(prev => ({ ...prev, avatar: preview }));
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const { uploadAvatar } = await import('../services/api');
+      const response = await uploadAvatar(formData);
+      
+      setUserProfile(prev => ({ ...prev, avatar: response.data.avatar_url }));
+    } catch (e) {
+      console.error("Failed to upload avatar", e);
+      alert("Failed to upload avatar");
+    }
+  };
+
   const myPets = user?.user_metadata?.myPets || [
     { id: 1, name: "Max", type: "Dog", adoptionDate: "2022-06-15", image: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=150&q=80" },
     { id: 2, name: "Luna", type: "Cat", adoptionDate: "2023-01-20", image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=150&q=80" }
@@ -91,7 +113,25 @@ const Profile = () => {
         <Grid container spacing={4}>
           <Grid item xs={12} md={4}>
             <Paper className="glass-panel" sx={{ p: 4, textAlign: 'center', borderRadius: '24px', position: 'relative', zIndex: 10, border: 'none' }}>
-              <Avatar src={userProfile.avatar} sx={{ width: 140, height: 140, mx: 'auto', mb: 3, border: '4px solid white', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }} />
+              <Box sx={{ position: 'relative', display: 'inline-block', mb: 3 }}>
+                <Avatar src={userProfile.avatar} sx={{ width: 140, height: 140, mx: 'auto', border: '4px solid white', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }} />
+                {isEditing && (
+                  <>
+                    <input
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      id="avatar-upload"
+                      type="file"
+                      onChange={handleAvatarUpload}
+                    />
+                    <label htmlFor="avatar-upload">
+                      <Button variant="contained" component="span" size="small" sx={{ position: 'absolute', bottom: 0, right: 0, borderRadius: '50%', minWidth: '40px', width: '40px', height: '40px', p: 0 }}>
+                        <EditIcon fontSize="small" /> 
+                      </Button>
+                    </label>
+                  </>
+                )}
+              </Box>
               <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>{`${userProfile.firstName} ${userProfile.lastName}`}</Typography>
               <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 3, px: 2 }}>{userProfile.bio}</Typography>
               <Divider sx={{ my: 3 }} />

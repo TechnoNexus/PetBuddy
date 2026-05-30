@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Q
 from sqlalchemy.orm import Session
 
 from database import get_db
+from storage import upload_pet_photo
 from models import Pet, PetPhoto, User
 from schemas import PetResponse, PetListResponse, PetCreate, PetUpdate
 from routes.auth import get_current_user, get_current_user_optional, require_shelter_or_admin
@@ -105,13 +106,18 @@ async def create_pet(
     # Handle photo uploads
     if photos:
         for i, photo in enumerate(photos):
-            # For now, store the filename. Storage upload will be added in storage.py integration.
-            pet_photo = PetPhoto(
-                pet_id=pet.id,
-                url=photo.filename or f"pet_{pet.id}_{i}.jpg",
-                is_primary=(i == 0),
-            )
-            db.add(pet_photo)
+            if not photo.filename:
+                continue
+            try:
+                result = await upload_pet_photo(photo, str(pet.id))
+                pet_photo = PetPhoto(
+                    pet_id=pet.id,
+                    url=result["url"],
+                    is_primary=(i == 0),
+                )
+                db.add(pet_photo)
+            except Exception as e:
+                print(f"[PetBuddy] Failed to upload pet photo {photo.filename}: {e}")
 
     db.commit()
     db.refresh(pet)

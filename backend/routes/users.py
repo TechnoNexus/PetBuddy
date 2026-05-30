@@ -1,10 +1,11 @@
 """
 User profile routes — /api/users/*
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 
 from database import get_db
+from storage import upload_avatar
 from models import User
 from schemas import UserResponse, UserUpdate
 from routes.auth import get_current_user
@@ -33,3 +34,22 @@ async def update_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.post("/avatar", response_model=UserResponse)
+async def update_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Upload and update the user's avatar."""
+    try:
+        result = await upload_avatar(file, str(current_user.id))
+        current_user.avatar_url = result["url"]
+        db.commit()
+        db.refresh(current_user)
+        return current_user
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to upload avatar: {str(e)}")
