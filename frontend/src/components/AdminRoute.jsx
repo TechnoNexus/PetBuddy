@@ -1,44 +1,42 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { getMyProfile } from '../services/api';
+import { supabase } from '../supabaseClient';
 import { Box, CircularProgress } from '@mui/material';
 
 /**
  * Wraps a route and only renders children if the current
- * user has role = 'admin' in the backend app_users table.
- * Otherwise redirects to the home page for login.
+ * Supabase user has role = 'admin' in the profiles table.
+ * Otherwise redirects to /admin/login.
  */
 export default function AdminRoute({ children }) {
-  const { user, loading: authLoading } = useAuth();
   const [status, setStatus] = useState('loading'); // 'loading' | 'admin' | 'denied'
 
   useEffect(() => {
     let cancelled = false;
 
     const check = async () => {
-      if (authLoading) return;
-      
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         if (!cancelled) setStatus('denied');
         return;
       }
       
-      try {
-        const { data: profile } = await getMyProfile();
-        if (!cancelled) {
-          setStatus(profile?.role === 'admin' ? 'admin' : 'denied');
-        }
-      } catch (err) {
-        if (!cancelled) setStatus('denied');
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!cancelled) {
+        setStatus(profile?.role === 'admin' ? 'admin' : 'denied');
       }
     };
 
     check();
     return () => { cancelled = true; };
-  }, [user, authLoading]);
+  }, []);
 
-  if (status === 'loading' || authLoading) {
+  if (status === 'loading') {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress sx={{ color: '#7c3aed' }} />
@@ -47,7 +45,7 @@ export default function AdminRoute({ children }) {
   }
 
   if (status === 'denied') {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   return children;
