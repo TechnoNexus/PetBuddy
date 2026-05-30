@@ -133,6 +133,7 @@ const [isFormOpen, setIsFormOpen] = useState(false);
                   height="250"
                   image={pet.image}
                   alt={pet.name}
+                  sx={{ objectFit: 'contain', bgcolor: '#f1f5f9' }}
                 />
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Typography gutterBottom variant="h5" component="h2">

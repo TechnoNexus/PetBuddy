@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Switch, Alert, Linking, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../supabaseClient';
+import { useAuth } from '../context/AuthContext';
+import { submitAdoptionApplication } from '../services/apiBase';
 
 export default function AdoptScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { petId, petName, petUrl, petSource } = useLocalSearchParams();
   const isExternalPet = !!petUrl;
   const [submitting, setSubmitting] = useState(false);
@@ -22,6 +24,10 @@ export default function AdoptScreen() {
   });
 
   const handleSubmit = async () => {
+    if (!user) {
+      Alert.alert('Login Required', 'You must be logged in to submit an adoption application.');
+      return;
+    }
     if (!formData.agreeToTerms) {
       Alert.alert('Error', 'You must agree to the terms and conditions.');
       return;
@@ -33,46 +39,39 @@ export default function AdoptScreen() {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('adoption_applications').insert([{
-        applicant_name: formData.name,
-        applicant_email: formData.email,
-        applicant_phone: formData.phone,
-        applicant_address: formData.address,
+      await submitAdoptionApplication({
+        pet_id: petId || null,
+        pet_name: petName || null,
+        pet_source_url: petUrl || null,
+        pet_source: petSource || 'internal',
+        full_name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
         experience: formData.experience,
         has_other_pets: formData.hasOtherPets,
         other_pets_details: formData.otherPetsDetails,
         housing_type: formData.housingType,
-        pet_id: petId || null,
-        pet_name: petName || null,
-        pet_source_url: petUrl || null,
-        pet_source: petSource || 'In-App',
-        status: 'pending',
-        submitted_at: new Date().toISOString(),
-      }]);
+        agreed_to_terms: formData.agreeToTerms
+      });
 
-      if (error) {
-        console.error('[Adopt] Supabase error:', error);
-        // Still show success even if DB fails \u2014 don't block user
-        Alert.alert('Submitted!', 'Application recorded. Note: could not save to database.');
-      } else {
-        Alert.alert(
-          'Application Submitted! \ud83c\udf89',
-          isExternalPet
-            ? `Your interest in ${petName || 'this pet'} has been saved! We'll now take you to their listing to complete the adoption.`
-            : 'Your adoption application has been submitted! Our team will review it and get back to you.',
-          [
-            {
-              text: isExternalPet ? 'Go to Listing' : 'OK',
-              onPress: () => {
-                if (isExternalPet && petUrl) {
-                  Linking.openURL(petUrl as string);
-                }
-                router.back();
+      Alert.alert(
+        'Application Submitted! 🎉',
+        isExternalPet
+          ? `Your interest in ${petName || 'this pet'} has been saved! We'll now take you to their listing to complete the adoption.`
+          : 'Your adoption application has been submitted! Our team will review it and get back to you.',
+        [
+          {
+            text: isExternalPet ? 'Go to Listing' : 'OK',
+            onPress: () => {
+              if (isExternalPet && petUrl) {
+                Linking.openURL(petUrl as string);
               }
+              router.back();
             }
-          ]
-        );
-      }
+          }
+        ]
+      );
     } catch (e) {
       console.error('[Adopt] Submit error:', e);
       Alert.alert('Error', 'Failed to submit application. Please try again.');
@@ -90,6 +89,12 @@ export default function AdoptScreen() {
         </Text>
         {petSource ? <Text style={styles.source}>Via: {petSource as string}</Text> : null}
       </View>
+
+      {!user && (
+        <View style={styles.warningContainer}>
+          <Text style={styles.warningText}>You must be logged in to submit an adoption application. Please log in from the Profile tab first.</Text>
+        </View>
+      )}
 
       <View style={styles.form}>
         <TextInput style={styles.input} placeholder="Full Name *" placeholderTextColor="#94a3b8" value={formData.name} onChangeText={(t) => setFormData({...formData, name: t})} />
@@ -141,4 +146,6 @@ const styles = StyleSheet.create({
   switchLabel: { fontSize: 16, color: '#1e293b', flex: 1, paddingRight: 10 },
   submitBtn: { backgroundColor: '#7c3aed', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10, marginBottom: 40 },
   submitBtnText: { color: 'white', fontWeight: '700', fontSize: 16 },
+  warningContainer: { marginHorizontal: 20, marginBottom: 10, backgroundColor: '#fffbeb', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#fef3c7' },
+  warningText: { color: '#b45309', fontSize: 14, fontWeight: '600' }
 });

@@ -12,6 +12,7 @@ PetBuddy unifies the entire pet ownership journey into a single, cohesive ecosys
 3. **Connect in Real-Time:** Features an integrated, real-time Chat system (powered by WebSockets) allowing potential adopters to instantly message adoption staff or ask questions.
 4. **Manage Profiles & Preferences:** Users have personalized Profiles where they can track their preferences and manage their adoption status.
 5. **Streamlined Administration:** An Admin Dashboard ensures staff can easily manage pet listings, track adoptions, and oversee the community from a centralized hub.
+6. **AI Scavenger:** Features an intelligent agent to discover and sync pet listings from external shelter sites directly into the platform.
 
 ---
 

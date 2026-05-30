@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, TextInput,
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { getMyAdoptionApplications } from '../../services/apiBase';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -48,15 +49,16 @@ export default function ProfileScreen() {
   ];
 
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user) return;
     setHistoryLoading(true);
-    supabase
-      .from('adoption_applications')
-      .select('*')
-      .eq('applicant_email', user.email)
-      .order('submitted_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) setAdoptionHistory(data);
+    getMyAdoptionApplications()
+      .then((data) => {
+        setAdoptionHistory(data);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch adoptions", error);
+      })
+      .finally(() => {
         setHistoryLoading(false);
       });
   }, [user]);

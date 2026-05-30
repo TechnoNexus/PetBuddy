@@ -38,6 +38,10 @@ export const updateProfile = (profileData) => api.put('/api/users/profile', prof
 // Store endpoints
 export const getProducts = (params) => api.get('/api/store/products', { params });
 
+// Adoption endpoints
+export const submitAdoptionApplication = (applicationData) => api.post('/api/adoptions/', applicationData);
+export const getMyAdoptionApplications = () => api.get('/api/adoptions/');
+
 export const chatApi = {
   getConversations: () => api.get('/api/chat/conversations'),
   getMessages: (conversationId) => api.get(`/api/chat/conversations/${conversationId}/messages`),

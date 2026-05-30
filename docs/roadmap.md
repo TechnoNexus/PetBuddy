@@ -14,6 +14,7 @@ This document outlines the strategic plan for PetBuddy's evolution from a protot
 - [ ] **Image Storage**: Implement Supabase Storage buckets to replace placeholder URLs with real user-uploaded pet photos.
 
 ## Phase 3: Advanced Features
+- [x] **AI Scavenger**: Implemented an AI agent to extract pet data and images from external sites and auto-save them to Supabase.
 - [ ] **Payments & Store**: Integrate Stripe API for the `PetStore` checkout process.
 - [ ] **Adoption Workflow**: Add a formal application submission system with status tracking (Pending, Approved, Denied).
 - [ ] **Shelter Accounts**: Create RBAC (Role-Based Access Control) to differentiate between regular Adopters and Shelter Admins.

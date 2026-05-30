@@ -2,10 +2,12 @@ import { AppBar, Toolbar, Typography, Button, Box, Container } from '@mui/materi
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import PetsIcon from '@mui/icons-material/Pets';
 import AddIcon from '@mui/icons-material/Add';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   const navItems = [
     { label: 'Home', path: '/home' },
@@ -67,8 +69,14 @@ const Navbar = () => {
             
             <Box sx={{ width: '1px', height: '24px', bgcolor: 'divider', mx: 1 }} />
             
-            <Button color="inherit" component={Link} to="/profile" sx={{ fontWeight: 500 }}>Profile</Button>
-            <Button color="inherit" component={Link} to="/" sx={{ fontWeight: 500 }}>Login</Button>
+            {user ? (
+              <>
+                <Button color="inherit" component={Link} to="/profile" sx={{ fontWeight: 500 }}>Profile</Button>
+                <Button color="inherit" onClick={async () => { await logout(); navigate('/'); }} sx={{ fontWeight: 500 }}>Logout</Button>
+              </>
+            ) : (
+              <Button color="inherit" component={Link} to="/" sx={{ fontWeight: 500 }}>Login</Button>
+            )}
             
             <Button
               variant="contained"

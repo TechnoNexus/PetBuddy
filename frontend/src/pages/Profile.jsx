@@ -2,22 +2,45 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import {
-  Container, Grid, Paper, Typography, Avatar, Button, Box, Tabs, Tab, Divider, List, ListItem, ListItemText, ListItemAvatar, Card, CardContent, TextField
+  Container, Grid, Paper, Typography, Avatar, Button, Box, Tabs, Tab, Divider, List, ListItem, ListItemText, ListItemAvatar, Card, CardContent, TextField, CircularProgress
 } from '@mui/material';
 import PetsIcon from '@mui/icons-material/Pets';
 import EmailIcon from '@mui/icons-material/Email';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PhoneIcon from '@mui/icons-material/Phone';
+import { getMyAdoptionApplications } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
+  const [adoptionHistory, setAdoptionHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     const savedTab = sessionStorage.getItem('activeProfileTab');
     if (savedTab) setTabValue(parseInt(savedTab));
   }, []);
+
+  useEffect(() => {
+    if (tabValue === 1 && user) {
+      fetchAdoptions();
+    }
+  }, [tabValue, user]);
+
+  const fetchAdoptions = async () => {
+    setHistoryLoading(true);
+    try {
+      const { data } = await getMyAdoptionApplications();
+      setAdoptionHistory(data);
+    } catch (e) {
+      console.error("Failed to fetch adoptions", e);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const [userProfile, setUserProfile] = useState({
     firstName: user?.user_metadata?.first_name || user?.user_metadata?.firstName || 'Guest',
@@ -57,11 +80,6 @@ const Profile = () => {
     { id: 2, name: "Luna", type: "Cat", adoptionDate: "2023-01-20", image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=150&q=80" }
   ];
 
-  const adoptionHistory = user?.user_metadata?.adoptionHistory || [
-    { id: 1, petName: "Max", status: "Approved", date: "2022-06-15", image: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=100&q=80" },
-    { id: 2, petName: "Luna", status: "Pending", date: "2023-01-20", image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=100&q=80" }
-  ];
-
   const orders = user?.user_metadata?.orders || [
     { orderId: "ORD123456", date: "2024-01-15", total: 54.98, items: [{ id: 1, name: "Premium Dog Food", quantity: 1, price: 29.99, image: "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=100&q=80" }] }
   ];
@@ -97,6 +115,9 @@ const Profile = () => {
               <Button variant={isEditing ? "contained" : "outlined"} fullWidth sx={{ mt: 3, borderRadius: '12px', py: 1.5 }} onClick={isEditing ? handleSaveProfile : handleEditProfile} disableElevation>
                 {isEditing ? 'Save Changes' : 'Edit Profile'}
               </Button>
+              <Button variant="outlined" color="error" fullWidth sx={{ mt: 2, borderRadius: '12px', py: 1.5 }} onClick={async () => { await logout(); navigate('/'); }}>
+                Log Out
+              </Button>
             </Paper>
           </Grid>
 
@@ -129,15 +150,21 @@ const Profile = () => {
                 )}
 
                 {tabValue === 1 && (
-                  <List sx={{ p: 0 }}>
-                    {adoptionHistory.map((act) => (
-                      <ListItem key={act.id} sx={{ mb: 2, border: '1px solid rgba(0,0,0,0.05)', borderRadius: '16px', p: 2 }}>
-                        <ListItemAvatar><Avatar src={act.image} sx={{ width: 60, height: 60, mr: 2, borderRadius: '12px' }} /></ListItemAvatar>
-                        <ListItemText primary={act.petName} secondary={`Date: ${new Date(act.date).toLocaleDateString()}`} primaryTypographyProps={{ fontWeight: 700 }} />
-                        <Box><Typography variant="body2" sx={{ fontWeight: 600, color: act.status === 'Approved' ? 'success.main' : 'warning.main', bgcolor: act.status === 'Approved' ? 'rgba(46,125,50,0.1)' : 'rgba(237,108,2,0.1)', px: 2, py: 0.5, borderRadius: '12px' }}>{act.status}</Typography></Box>
-                      </ListItem>
-                    ))}
-                  </List>
+                  historyLoading ? (
+                    <Box sx={{ textAlign: 'center', py: 4 }}><CircularProgress /></Box>
+                  ) : adoptionHistory.length === 0 ? (
+                    <Typography color="text.secondary" textAlign="center" py={4}>No adoption history found.</Typography>
+                  ) : (
+                    <List sx={{ p: 0 }}>
+                      {adoptionHistory.map((act) => (
+                        <ListItem key={act.id} sx={{ mb: 2, border: '1px solid rgba(0,0,0,0.05)', borderRadius: '16px', p: 2 }}>
+                          <ListItemAvatar><Avatar sx={{ width: 60, height: 60, mr: 2, borderRadius: '12px' }}><PetsIcon /></Avatar></ListItemAvatar>
+                          <ListItemText primary={act.pet_name || `Pet #${act.pet_id}`} secondary={`Date: ${new Date(act.created_at).toLocaleDateString()}`} primaryTypographyProps={{ fontWeight: 700 }} />
+                          <Box><Typography variant="body2" sx={{ fontWeight: 600, color: act.status === 'approved' ? 'success.main' : act.status === 'rejected' ? 'error.main' : 'warning.main', bgcolor: act.status === 'approved' ? 'rgba(46,125,50,0.1)' : act.status === 'rejected' ? 'rgba(211,47,47,0.1)' : 'rgba(237,108,2,0.1)', px: 2, py: 0.5, borderRadius: '12px', textTransform: 'capitalize' }}>{act.status}</Typography></Box>
+                        </ListItem>
+                      ))}
+                    </List>
+                  )
                 )}
 
                 {tabValue === 2 && (

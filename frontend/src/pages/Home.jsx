@@ -102,7 +102,7 @@ const Home = () => {
             {featuredPets.map((pet) => (
               <Grid item key={pet.id} xs={12} sm={6} md={4}>
                 <Card className="hover-lift" sx={{ borderRadius: '24px', overflow: 'hidden', border: 'none', cursor: 'pointer' }} onClick={() => navigate(`/pets/${pet.id}`)}>
-                  <CardMedia component="img" height="280" image={pet.image} alt={pet.name} />
+                  <CardMedia component="img" height="280" image={pet.image} alt={pet.name} sx={{ objectFit: 'cover', objectPosition: 'top' }} />
                   <CardContent sx={{ p: 3, textAlign: 'center' }}>
                     <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{pet.name}</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>

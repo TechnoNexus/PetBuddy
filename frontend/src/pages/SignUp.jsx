@@ -78,10 +78,10 @@ const SignUp = () => {
         <Divider sx={{ my: 4 }}>OR</Divider>
 
         <Stack spacing={2}>
-          <Button variant="outlined" startIcon={<GoogleIcon />} onClick={() => handleOAuthLogin('google')} fullWidth sx={{ borderRadius: '12px', py: 1.5 }}>
+          <Button variant="outlined" startIcon={<GoogleIcon sx={{ color: '#DB4437' }} />} onClick={() => handleOAuthLogin('google')} fullWidth sx={{ borderRadius: '12px', py: 1.5, borderColor: '#e2e8f0', color: '#1e293b', bgcolor: '#fff', '&:hover': { bgcolor: '#f8fafc', borderColor: '#cbd5e1' } }}>
             Continue with Google
           </Button>
-          <Button variant="outlined" startIcon={<FacebookIcon />} onClick={() => handleOAuthLogin('facebook')} fullWidth sx={{ borderRadius: '12px', py: 1.5 }}>
+          <Button variant="contained" startIcon={<FacebookIcon />} onClick={() => handleOAuthLogin('facebook')} fullWidth sx={{ borderRadius: '12px', py: 1.5, bgcolor: '#1877F2', color: '#fff', '&:hover': { bgcolor: '#166fe5' }, boxShadow: 'none' }}>
             Continue with Facebook
           </Button>
         </Stack>
