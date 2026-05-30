@@ -6,6 +6,7 @@ import { FontAwesome } from '@expo/vector-icons';
 export default function ChatScreen() {
   const router = useRouter();
   const [conversations] = useState([
+    { id: 'ai', name: 'AI Assistant', lastMessage: 'Hi! I am your AI assistant. Download my model to chat offline!', avatar: '🤖', unread: 1 },
     { id: 1, name: 'John Doe', lastMessage: 'Hi, I\'m interested in your Golden Retriever!', avatar: 'J', unread: 2 },
     { id: 2, name: 'Sarah Wilson', lastMessage: 'When can I visit to see the cat?', avatar: 'S', unread: 0 },
     { id: 3, name: 'Mike Brown', lastMessage: 'Is the puppy still available?', avatar: 'M', unread: 1 }

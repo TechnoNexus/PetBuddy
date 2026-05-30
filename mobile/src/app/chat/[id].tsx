@@ -1,22 +1,94 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { FontAwesome, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { OnDeviceAI } from '../../services/OnDeviceAI';
+import * as FileSystem from 'expo-file-system';
 
 export default function ChatThread() {
   const router = useRouter();
   const { id, name } = useLocalSearchParams();
   const [messages, setMessages] = useState([
-    { id: 1, text: "Hello! I saw your profile.", isMe: false, time: "10:00 AM" },
-    { id: 2, text: "Hi! Yes, I'm interested in adopting.", isMe: true, time: "10:05 AM" },
-    { id: 3, text: "Great, when are you free for a call?", isMe: false, time: "10:06 AM" }
+    { id: 1, text: "Hello! I am your AI assistant. How can I help you today?", isMe: false, time: "10:00 AM" }
   ]);
   const [input, setInput] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [modelReady, setModelReady] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
+  
+  const downloadResumableRef = useRef<FileSystem.DownloadResumable | null>(null);
 
-  const sendMessage = () => {
+  const isAiChat = name === 'AI Scavenger' || name === 'AI Assistant';
+
+  useEffect(() => {
+    if (isAiChat && OnDeviceAI.isReady()) {
+      setModelReady(true);
+    }
+  }, [isAiChat]);
+
+  const downloadAndInitModel = async () => {
+    try {
+      setIsDownloading(true);
+      // Ensure you replace this placeholder URL with your real hosted Gemma .bin file URL!
+      const modelUrl = 'https://models.petbuddy.com/gemma-2b.bin'; 
+      const modelPath = FileSystem.documentDirectory + 'gemma.bin';
+      
+      const fileInfo = await FileSystem.getInfoAsync(modelPath);
+      if (!fileInfo.exists) {
+        // Real download implementation using expo-file-system
+        downloadResumableRef.current = FileSystem.createDownloadResumable(
+          modelUrl,
+          modelPath,
+          {},
+          (progressEvent) => {
+            const progress = progressEvent.totalBytesWritten / progressEvent.totalBytesExpectedToWrite;
+            // Prevent NaN if totalBytes is unknown
+            if (progressEvent.totalBytesExpectedToWrite > 0) {
+              setDownloadProgress(Math.floor(progress * 100));
+            }
+          }
+        );
+        
+        await downloadResumableRef.current.downloadAsync();
+      }
+      
+      // Initialize the on-device AI native module
+      await OnDeviceAI.initialize(modelPath);
+      setModelReady(true);
+      setIsDownloading(false);
+    } catch (e) {
+      console.error(e);
+      setIsDownloading(false);
+      alert('Failed to download or initialize AI on-device. URL might be invalid.');
+    }
+  };
+
+  const sendMessage = async () => {
     if (!input.trim()) return;
-    setMessages([...messages, { id: Date.now(), text: input, isMe: true, time: "Just now" }]);
+    const userMsg = { id: Date.now(), text: input, isMe: true, time: "Just now" };
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
+
+    if (isAiChat) {
+      setIsAiLoading(true);
+      try {
+        let responseText = "";
+        if (modelReady) {
+          // Native Kotlin Offline Inference
+          responseText = await OnDeviceAI.generateResponse(userMsg.text);
+        } else {
+          // Cloud Fallback Simulation (hitting FastAPI)
+          await new Promise(r => setTimeout(r, 1500));
+          responseText = "This is a cloud response from Gemini Pro! (Model not downloaded)";
+        }
+        setMessages(prev => [...prev, { id: Date.now() + 1, text: responseText, isMe: false, time: "Just now" }]);
+      } catch (err) {
+        setMessages(prev => [...prev, { id: Date.now() + 1, text: "Error: Could not generate response.", isMe: false, time: "Just now" }]);
+      } finally {
+        setIsAiLoading(false);
+      }
+    }
   };
 
   return (
@@ -25,10 +97,30 @@ export default function ChatThread() {
          <TouchableOpacity onPress={() => router.back()} style={{ padding: 10, marginRight: 10 }}>
             <Ionicons name="chevron-back" size={24} color="#1e293b" />
          </TouchableOpacity>
-         <View style={styles.avatar}><Text style={styles.avatarText}>{name ? name.charAt(0) : 'U'}</Text></View>
-         <Text style={styles.title}>{name}</Text>
+         <View style={styles.avatar}>
+           <Text style={styles.avatarText}>{isAiChat ? '🤖' : (name ? (name as string).charAt(0) : 'U')}</Text>
+         </View>
+         <View>
+           <Text style={styles.title}>{name}</Text>
+           {isAiChat && (
+             <Text style={styles.modelIndicator}>
+               {modelReady ? '🟢 Local AI (Gemma)' : '☁️ Cloud AI (Gemini Pro)'}
+             </Text>
+           )}
+         </View>
        </View>
        
+       {isAiChat && !modelReady && (
+         <View style={styles.aiNotice}>
+           <MaterialIcons name="memory" size={32} color="#7c3aed" />
+           <Text style={styles.aiNoticeTitle}>Offline AI Mode</Text>
+           <Text style={styles.aiNoticeText}>Download the on-device AI model to chat without an internet connection. It will be saved securely to Internal Storage.</Text>
+           <TouchableOpacity style={styles.downloadBtn} onPress={downloadAndInitModel} disabled={isDownloading}>
+             <Text style={styles.downloadBtnText}>{isDownloading ? `Downloading... ${downloadProgress}%` : 'Download Model (1.5GB)'}</Text>
+           </TouchableOpacity>
+         </View>
+       )}
+
        <ScrollView style={styles.messagesContainer} contentContainerStyle={{ padding: 20 }}>
          {messages.map(msg => (
            <View key={msg.id} style={[styles.messageBubble, msg.isMe ? styles.myMessage : styles.theirMessage]}>
@@ -36,6 +128,11 @@ export default function ChatThread() {
              <Text style={[styles.messageTime, !msg.isMe && { color: '#64748b' }]}>{msg.time}</Text>
            </View>
          ))}
+         {isAiLoading && (
+            <View style={[styles.messageBubble, styles.theirMessage, { paddingVertical: 10 }]}>
+               <ActivityIndicator size="small" color="#7c3aed" />
+            </View>
+         )}
        </ScrollView>
 
        <View style={styles.inputContainer}>
@@ -47,7 +144,7 @@ export default function ChatThread() {
            onChangeText={setInput} 
            multiline
          />
-         <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+         <TouchableOpacity style={[styles.sendButton, !input.trim() && { opacity: 0.5 }]} onPress={sendMessage} disabled={!input.trim()}>
            <FontAwesome name="send" size={16} color="white" />
          </TouchableOpacity>
        </View>
@@ -61,6 +158,12 @@ const styles = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#7c3aed', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   avatarText: { color: 'white', fontSize: 16, fontWeight: '700' },
   title: { fontSize: 18, fontWeight: '700', color: '#1e293b' },
+  modelIndicator: { fontSize: 12, color: '#64748b', marginTop: 2, fontWeight: '600' },
+  aiNotice: { margin: 20, padding: 20, backgroundColor: '#f3e8ff', borderRadius: 16, alignItems: 'center' },
+  aiNoticeTitle: { fontSize: 16, fontWeight: '700', color: '#7c3aed', marginTop: 10, marginBottom: 5 },
+  aiNoticeText: { textAlign: 'center', color: '#6b7280', marginBottom: 15, fontSize: 13 },
+  downloadBtn: { backgroundColor: '#7c3aed', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 },
+  downloadBtnText: { color: 'white', fontWeight: '700' },
   messagesContainer: { flex: 1 },
   messageBubble: { maxWidth: '80%', padding: 15, borderRadius: 20, marginBottom: 15 },
   myMessage: { alignSelf: 'flex-end', backgroundColor: '#7c3aed', borderBottomRightRadius: 5 },
