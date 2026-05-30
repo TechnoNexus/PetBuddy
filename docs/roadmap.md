@@ -11,7 +11,7 @@ This document outlines the strategic plan for PetBuddy's evolution from a protot
 ## Phase 2: Database Migration & Persistence
 - [x] **Supabase Integration**: Connected the frontend and mobile apps to Supabase for authentication (OAuth + Email).
 - [x] **SQLAlchemy Models**: Finalized `models.py` and `schemas.py` to map strictly to the PostgreSQL database on Railway.
-- [ ] **Image Storage**: Implement Supabase Storage buckets to replace placeholder URLs with real user-uploaded pet photos.
+- [x] **Image Storage**: Implement Supabase Storage buckets to replace placeholder URLs with real user-uploaded pet photos.
 
 ## Phase 3: Advanced Features
 - [x] **AI Scavenger**: Implemented an AI agent to extract pet data and images from external sites and auto-save them to Supabase.
