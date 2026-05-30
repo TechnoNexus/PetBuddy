@@ -45,6 +45,14 @@ def ensure_schema_compatibility():
             with engine.begin() as connection:
                 connection.execute(text("ALTER TABLE pets ADD COLUMN external_url VARCHAR"))
             print("[PetBuddy] pets.external_url column ready.")
+            
+        if "adoption_applications" in inspector.get_table_names():
+            app_columns = {column["name"] for column in inspector.get_columns("adoption_applications")}
+            if "applicant_id" not in app_columns:
+                print("[PetBuddy] Adding missing adoption_applications.applicant_id column...")
+                with engine.begin() as connection:
+                    connection.execute(text("ALTER TABLE adoption_applications ADD COLUMN applicant_id UUID REFERENCES app_users(id)"))
+                print("[PetBuddy] adoption_applications.applicant_id column ready.")
     except Exception as e:
         print(f"[PetBuddy] Schema compatibility check skipped: {e}")
 
