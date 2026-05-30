@@ -14,6 +14,7 @@ Welcome, AI Agent! If you are working on the PetBuddy repository, please adhere 
 - Always prefer rounded borders (`borderRadius: 16px` or `24px`), soft shadows, and gradients over flat colors.
 - Ensure new components utilize the `Outfit` font and the color variables defined in `index.css`.
 - Micro-animations (like hover-lifts) should be applied to interactive elements (Cards, Buttons).
+- **Mobile Responsiveness is mandatory:** All UI elements (especially Navigation and Layouts) must be fully functional on mobile screens (e.g., using Hamburger menus for navigation, and correctly utilizing Material UI `xs` breakpoints for grids and displays).
 
 ## 3. Backend Rules
 - Do not add strict version pinning in `backend/requirements.txt` unless absolutely necessary, as it has caused compilation issues with newer Python releases (e.g., Python 3.14).
