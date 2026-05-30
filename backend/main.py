@@ -48,11 +48,53 @@ def ensure_schema_compatibility():
             
         if "adoption_applications" in inspector.get_table_names():
             app_columns = {column["name"] for column in inspector.get_columns("adoption_applications")}
+            
+            missing_cols = []
             if "applicant_id" not in app_columns:
-                print("[PetBuddy] Adding missing adoption_applications.applicant_id column...")
+                missing_cols.append("ADD COLUMN applicant_id UUID REFERENCES app_users(id)")
+            if "full_name" not in app_columns:
+                missing_cols.append("ADD COLUMN full_name VARCHAR")
+            if "email" not in app_columns:
+                missing_cols.append("ADD COLUMN email VARCHAR")
+            if "phone" not in app_columns:
+                missing_cols.append("ADD COLUMN phone VARCHAR")
+            if "address" not in app_columns:
+                missing_cols.append("ADD COLUMN address TEXT")
+            if "experience" not in app_columns:
+                missing_cols.append("ADD COLUMN experience TEXT")
+            if "has_other_pets" not in app_columns:
+                missing_cols.append("ADD COLUMN has_other_pets BOOLEAN DEFAULT FALSE")
+            if "other_pets_details" not in app_columns:
+                missing_cols.append("ADD COLUMN other_pets_details TEXT")
+            if "housing_type" not in app_columns:
+                missing_cols.append("ADD COLUMN housing_type VARCHAR")
+            if "agreed_to_terms" not in app_columns:
+                missing_cols.append("ADD COLUMN agreed_to_terms BOOLEAN DEFAULT FALSE")
+            if "pet_name" not in app_columns:
+                missing_cols.append("ADD COLUMN pet_name VARCHAR")
+            if "pet_source" not in app_columns:
+                missing_cols.append("ADD COLUMN pet_source VARCHAR DEFAULT 'internal'")
+            if "external_url" not in app_columns:
+                missing_cols.append("ADD COLUMN external_url VARCHAR")
+            if "created_at" not in app_columns:
+                missing_cols.append("ADD COLUMN created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()")
+            if "updated_at" not in app_columns:
+                missing_cols.append("ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()")
+                
+            if missing_cols:
+                print(f"[PetBuddy] Adding {len(missing_cols)} missing columns to adoption_applications...")
                 with engine.begin() as connection:
-                    connection.execute(text("ALTER TABLE adoption_applications ADD COLUMN applicant_id UUID REFERENCES app_users(id)"))
-                print("[PetBuddy] adoption_applications.applicant_id column ready.")
+                    for col_sql in missing_cols:
+                        connection.execute(text(f"ALTER TABLE adoption_applications {col_sql}"))
+                        
+            # Drop NOT NULL constraints on legacy columns that we no longer use but still exist in production DB
+            with engine.begin() as connection:
+                if "applicant_name" in app_columns:
+                    connection.execute(text("ALTER TABLE adoption_applications ALTER COLUMN applicant_name DROP NOT NULL"))
+                if "applicant_email" in app_columns:
+                    connection.execute(text("ALTER TABLE adoption_applications ALTER COLUMN applicant_email DROP NOT NULL"))
+                
+            print("[PetBuddy] adoption_applications columns ready.")
     except Exception as e:
         print(f"[PetBuddy] Schema compatibility check skipped: {e}")
 
