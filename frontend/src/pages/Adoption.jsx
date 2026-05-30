@@ -58,7 +58,7 @@ const [isFormOpen, setIsFormOpen] = useState(false);
   useEffect(() => {
     const filtered = pets.filter(pet => {
       const matchesSpecies = !filters.species || pet.species === filters.species;
-      const matchesBreed = !filters.breed || pet.breed.toLowerCase().includes(filters.breed.toLowerCase());
+      const matchesBreed = !filters.breed || (pet.breed && pet.breed.toLowerCase().includes(filters.breed.toLowerCase()));
       const matchesAge = !filters.age || getAgeCategory(pet.age) === filters.age;
       return matchesSpecies && matchesBreed && matchesAge;
     });
