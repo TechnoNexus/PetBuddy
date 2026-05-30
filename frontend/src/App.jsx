@@ -18,6 +18,8 @@ import OrderSuccess from './pages/OrderSuccess';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
 import AdminRoute from './components/AdminRoute';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 
 import { theme } from './theme';
@@ -44,6 +46,8 @@ function App() {
   <Route path="/checkout" element={<Checkout />} />
   <Route path="/order-success" element={<OrderSuccess />} />
   <Route path="/admin/login" element={<AdminLogin />} />
+  <Route path="/forgot-password" element={<ForgotPassword />} />
+  <Route path="/reset-password" element={<ResetPassword />} />
   <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
   {/* Legacy redirect */}
   <Route path="/admin/users" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

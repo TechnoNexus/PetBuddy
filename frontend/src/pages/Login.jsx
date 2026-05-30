@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { Container, Paper, Typography, TextField, Button, Divider, Stack, Link, Alert, Snackbar } from '@mui/material';
+import { Container, Paper, Typography, TextField, Button, Divider, Stack, Link, Alert, Snackbar, Box } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import { useAuth } from '../context/AuthContext';
@@ -60,6 +60,11 @@ const Login = () => {
             <Button type="submit" variant="contained" size="large" disabled={loading} sx={{ borderRadius: '12px', py: 1.5, fontWeight: 700 }} disableElevation>
               {loading ? 'Logging in...' : 'Log In'}
             </Button>
+            <Box textAlign="center" mt={1}>
+              <Link component={RouterLink} to="/forgot-password" sx={{ fontWeight: 600, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}>
+                Forgot Password?
+              </Link>
+            </Box>
           </Stack>
         </form>
 
