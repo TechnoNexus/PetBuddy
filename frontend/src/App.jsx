@@ -1,6 +1,7 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
+import { useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Pets from './pages/Pets';
@@ -21,8 +22,17 @@ import AdminRoute from './components/AdminRoute';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
-
 import { theme } from './theme';
+
+function GlobalAuthRedirect() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (window.location.hash.includes('type=recovery')) {
+      navigate('/reset-password' + window.location.hash);
+    }
+  }, [navigate]);
+  return null;
+}
 
 function App() {
   return (
@@ -30,6 +40,7 @@ function App() {
       <CssBaseline />
       <AuthProvider>
       <Router>
+        <GlobalAuthRedirect />
         <div className="App">
           <Navbar />
         <Routes>
