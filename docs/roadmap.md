@@ -24,7 +24,7 @@ This document outlines the strategic plan for PetBuddy's evolution from a protot
 - [x] **Containerization & Deployment**: Deployed frontend to Cloudflare Pages and FastAPI backend to Railway.
 - [x] **Mobile Release & Deep Linking**: Generated a production `.aab` Android build for the Google Play Store and successfully configured Supabase Google OAuth deep linking.
 
-## Phase 5: On-Device AI (Future)
-- [ ] **Custom Expo Module**: Create a native Kotlin bridge connecting React Native to Android's native OS capabilities.
-- [ ] **MediaPipe SDK**: Integrate the Google MediaPipe LLM Inference API to download and run the Gemma model directly on the phone's GPU.
+## Phase 5: On-Device AI
+- [x] **Custom Expo Module**: Create a native Kotlin bridge connecting React Native to Android's native OS capabilities.
+- [x] **MediaPipe SDK**: Integrate the Google MediaPipe LLM Inference API to download and run the Gemma model directly on the phone's GPU.
 - [ ] **AICore Integration**: Add support for Android 14+ AICore to natively tap into Gemini Nano on supported devices (e.g., Pixel 8 Pro, Galaxy S24) for zero-cost, offline AI features.

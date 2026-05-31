@@ -31,7 +31,7 @@ export default function ChatThread() {
     try {
       setIsDownloading(true);
       // Ensure you replace this placeholder URL with your real hosted Gemma .bin file URL!
-      const modelUrl = 'https://models.petbuddy.com/gemma-2b.bin'; 
+      const modelUrl = 'https://huggingface.co/aj-techno/petbuddy-gemma/resolve/main/gemma-2b-it-cpu-int4.bin'; 
       const modelPath = FileSystem.documentDirectory + 'gemma.bin';
       
       const fileInfo = await FileSystem.getInfoAsync(modelPath);
