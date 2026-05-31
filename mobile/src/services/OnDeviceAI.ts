@@ -10,7 +10,9 @@ class OnDeviceAIService {
   async initialize(modelPath: string): Promise<boolean> {
     try {
       console.log('Initializing On-Device AI with model:', modelPath);
-      const result = await AicoreModule.initializeModel(modelPath);
+      // MediaPipe C++ core cannot read paths starting with file://
+      const cleanPath = modelPath.replace('file://', '');
+      const result = await AicoreModule.initializeModel(cleanPath);
       this.isInitialized = true;
       return result;
     } catch (error) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FontAwesome, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { OnDeviceAI } from '../../services/OnDeviceAI';
@@ -70,11 +70,10 @@ export default function ChatThread() {
       await OnDeviceAI.initialize(modelPath);
       setModelReady(true);
       setIsDownloading(false);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      setIsDownloading(false);
-      alert('Failed to download or initialize AI on-device. URL might be invalid.');
-    }
+      Alert.alert("Error", `Failed to download or initialize AI: ${e?.message || e}`);
+    } finally { setIsDownloading(false); };
   };
 
   const sendMessage = async () => {
