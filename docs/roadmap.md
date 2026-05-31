@@ -15,7 +15,7 @@ This document outlines the strategic plan for PetBuddy's evolution from a protot
 
 ## Phase 3: Advanced Features
 - [x] **AI Scavenger**: Implemented an AI agent to extract pet data and images from external sites and auto-save them to Supabase.
-- [ ] **Payments & Store**: Integrate Stripe API for the `PetStore` checkout process.
+- [x] **Payments & Store**: Integrate Stripe API for the `PetStore` checkout process.
 - [x] **Adoption Workflow**: Implemented formal application submission system and fixed UI.
 - [x] **Shelter Accounts**: Created RBAC (Role-Based Access Control) in `profiles` to differentiate between Adopters and Shelter Admins. Also added full password recovery / reset flow for all accounts.
 

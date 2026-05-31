@@ -1,25 +1,72 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-
-const products = {
-  food: [
-    { id: 1, name: "Premium Dog Food", price: "$29.99", rating: 4.5, image: "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=800&q=80", desc: "High-quality nutrition for adult dogs" },
-    { id: 2, name: "Cat Food - Salmon", price: "$24.99", rating: 4.8, image: "https://images.unsplash.com/photo-1571566882372-1598d88abd90?w=800&q=80", desc: "Wild-caught salmon recipe" }
-  ],
-  clothes: [
-    { id: 3, name: "Winter Dog Jacket", price: "$34.99", rating: 4.3, image: "https://images.unsplash.com/photo-1576578985983-0b5d0e44f521?w=800&q=80", desc: "Warm and waterproof" },
-    { id: 4, name: "Cat Sweater", price: "$19.99", rating: 4.0, image: "https://images.unsplash.com/photo-1636654129379-e7ae6f30c6c0?w=800&q=80", desc: "Soft and comfortable" }
-  ],
-  accessories: [
-    { id: 5, name: "Leather Collar", price: "$15.99", rating: 4.6, image: "https://images.unsplash.com/photo-1599233068953-7f75bbd6c8c7?w=800&q=80", desc: "Genuine leather, durable" },
-    { id: 6, name: "Interactive Toy", price: "$12.99", rating: 4.7, image: "https://images.unsplash.com/photo-1577347209434-357d19994646?w=800&q=80", desc: "Keeps pets entertained" }
-  ]
-};
+import * as WebBrowser from 'expo-web-browser';
+import { getApiBase } from '../../services/apiBase';
 
 export default function StoreScreen() {
   const [category, setCategory] = useState('food');
-  const [cartCount, setCartCount] = useState(0);
+  const [cart, setCart] = useState([]);
+  const [productsData, setProductsData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch(`${getApiBase()}/api/store/products`);
+        const data = await response.json();
+        setProductsData(data.products || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  const addToCart = (product) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { ...product, quantity: 1 }];
+    });
+    Alert.alert('Added', `${product.name} added to cart.`);
+  };
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) {
+      Alert.alert('Empty Cart', 'Please add items before checking out.');
+      return;
+    }
+    try {
+      const response = await fetch(`${getApiBase()}/api/store/create-checkout-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: cart.map(item => ({ product_id: item.id, quantity: item.quantity })) })
+      });
+      const data = await response.json();
+      if (data.url) {
+        const result = await WebBrowser.openBrowserAsync(data.url);
+        if (result.type === 'cancel' || result.type === 'dismiss') {
+          // Can check status, maybe clear cart if successful in real app
+          // For now we clear cart on success
+          setCart([]);
+        }
+      } else {
+        Alert.alert('Error', 'Failed to initialize checkout.');
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Checkout Error', 'Something went wrong.');
+    }
+  };
+
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const displayedProducts = productsData.filter(p => p.category.toLowerCase().includes(category.toLowerCase()));
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
@@ -28,7 +75,7 @@ export default function StoreScreen() {
                 <Text style={styles.title}>Pet Store</Text>
                 <Text style={styles.subtitle}>Premium supplies for companions.</Text>
             </View>
-            <TouchableOpacity style={styles.cartBtn} onPress={() => Alert.alert('Cart', `You have ${cartCount} items in your cart.`)}>
+            <TouchableOpacity style={styles.cartBtn} onPress={handleCheckout}>
                 <FontAwesome name="shopping-cart" size={24} color="#7c3aed" />
                 {cartCount > 0 && (
                     <View style={styles.badge}>
@@ -51,25 +98,29 @@ export default function StoreScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.grid}>
-            {products[category].map(product => (
-                <View key={product.id} style={styles.card}>
-                <Image source={{ uri: product.image }} style={styles.cardImage} />
-                <View style={styles.cardContent}>
-                    <Text style={styles.productName}>{product.name}</Text>
-                    <Text style={styles.productDesc}>{product.desc}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}>
-                        <FontAwesome name="star" size={14} color="#fbbf24" />
-                        <Text style={styles.ratingText}> {product.rating}</Text>
+            {loading ? (
+                <ActivityIndicator size="large" color="#7c3aed" style={{ marginTop: 50 }} />
+            ) : (
+                displayedProducts.map(product => (
+                    <View key={product.id} style={styles.card}>
+                    <Image source={{ uri: product.image_url || 'https://via.placeholder.com/150' }} style={styles.cardImage} />
+                    <View style={styles.cardContent}>
+                        <Text style={styles.productName}>{product.name}</Text>
+                        <Text style={styles.productDesc}>{product.description}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}>
+                            <FontAwesome name="star" size={14} color="#fbbf24" />
+                            <Text style={styles.ratingText}> {product.rating || '4.5'}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 }}>
+                            <Text style={styles.productPrice}>${product.price.toFixed(2)}</Text>
+                            <TouchableOpacity style={styles.buyButton} onPress={() => addToCart(product)}>
+                            <Text style={{ color: 'white', fontWeight: '700' }}>Add to Cart</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 }}>
-                        <Text style={styles.productPrice}>{product.price}</Text>
-                        <TouchableOpacity style={styles.buyButton} onPress={() => setCartCount(c => c + 1)}>
-                        <Text style={{ color: 'white', fontWeight: '700' }}>Add to Cart</Text>
-                        </TouchableOpacity>
                     </View>
-                </View>
-                </View>
-            ))}
+                ))
+            )}
         </ScrollView>
     </View>
   );

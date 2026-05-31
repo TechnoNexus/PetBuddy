@@ -11,3 +11,4 @@ google-genai
 ddgs
 supabase
 pydantic[email]
+stripe

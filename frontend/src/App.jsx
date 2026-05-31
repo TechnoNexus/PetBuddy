@@ -14,7 +14,6 @@ import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import PetStore from './pages/PetStore';
 import { AuthProvider } from './context/AuthContext';
-import Checkout from './pages/Checkout';
 import OrderSuccess from './pages/OrderSuccess';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
@@ -54,7 +53,6 @@ function App() {
   <Route path="/adoption" element={<Adoption />} />
   <Route path="/signup" element={<SignUp />} />
   <Route path="/store" element={<PetStore />} />
-  <Route path="/checkout" element={<Checkout />} />
   <Route path="/order-success" element={<OrderSuccess />} />
   <Route path="/admin/login" element={<AdminLogin />} />
   <Route path="/forgot-password" element={<ForgotPassword />} />

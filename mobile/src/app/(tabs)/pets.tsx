@@ -16,18 +16,11 @@ function paramToString(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] || '') : (value || '');
 }
 
-const petsData = [
-    { id: "1", name: "Buddy", species: "dog", breed: "Labrador Retriever", age: "3", location: "New York", description: "Friendly and energetic dog who loves to play fetch and swim.", image: "https://images.unsplash.com/photo-1574158622564-3d6afb141703?w=800&q=80" },
-    { id: "2", name: "Mittens", species: "cat", breed: "Maine Coon", age: "2", location: "Los Angeles", description: "A large, fluffy gentle giant. Very vocal and loves to cuddle.", image: "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=800&q=80" },
-    { id: "3", name: "Charlie", species: "dog", breed: "Beagle", age: "1", location: "Chicago", description: "Curious and playful pup. Still needs some house training.", image: "https://images.unsplash.com/photo-1537151608804-ea6f272a728b?w=800&q=80" },
-    { id: "4", name: "Daisy", species: "cat", breed: "British Shorthair", age: "4", location: "Miami", description: "A calm and independent cat. Enjoys sunny spots.", image: "https://images.unsplash.com/photo-1513360371669-4adf3dd7dff8?w=800&q=80" },
-    { id: "5", name: "Leo", species: "dog", breed: "French Bulldog", age: "2", location: "Seattle", description: "A total clown! Loves attention and is great with kids.", image: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=800&q=80" }
-];
-
 export default function PetsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   
+  const [petsData, setPetsData] = useState<any[]>([]);
   const [filters, setFilters] = useState({
     species: paramToString(params.species),
     breed: '',
@@ -35,7 +28,7 @@ export default function PetsScreen() {
     location: paramToString(params.location)
   });
 
-  const [filteredPets, setFilteredPets] = useState(petsData);
+  const [filteredPets, setFilteredPets] = useState<any[]>([]);
   const [aiMode, setAiMode] = useState(false);
   const [aiQuery, setAiQuery] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -87,6 +80,19 @@ export default function PetsScreen() {
   }, [params]);
 
   useEffect(() => {
+    const fetchPets = async () => {
+      try {
+        const response = await fetch(`${getApiBase()}/api/pets`);
+        const data = await response.json();
+        setPetsData(data);
+      } catch (e) {
+        console.error('Failed to fetch pets:', e);
+      }
+    };
+    fetchPets();
+  }, []);
+
+  useEffect(() => {
     let result = petsData;
     if (filters.species) {
       result = result.filter(p => p.species.toLowerCase() === filters.species.toLowerCase());
@@ -98,10 +104,11 @@ export default function PetsScreen() {
       result = result.filter(p => p.location.toLowerCase().includes(filters.location.toLowerCase()));
     }
     if (filters.age) {
-      result = result.filter(p => p.age === filters.age);
+      // API might return age as number, so we toString it or vice versa
+      result = result.filter(p => p.age?.toString() === filters.age);
     }
     setFilteredPets(result);
-  }, [filters]);
+  }, [filters, petsData]);
 
   const clearFilters = () => setFilters({ species: '', breed: '', age: '', location: '' });
   const hasFilters = Object.values(filters).some(Boolean);
@@ -117,7 +124,7 @@ export default function PetsScreen() {
         {/* USP AI Banner */}
         <TouchableOpacity 
           style={styles.uspBanner} 
-          onPress={() => router.push('/chat/ai?name=AI%20Assistant')}
+          onPress={() => router.push(`/chat/ai?name=AI%20Assistant&petsContext=${encodeURIComponent(JSON.stringify(petsData))}`)}
         >
           <View style={styles.uspContent}>
             <Ionicons name="hardware-chip" size={32} color="white" />

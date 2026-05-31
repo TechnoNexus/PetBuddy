@@ -7,7 +7,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 export default function ChatThread() {
   const router = useRouter();
-  const { id, name } = useLocalSearchParams();
+  const { id, name, petsContext } = useLocalSearchParams();
   const [messages, setMessages] = useState([
     { id: 1, text: "Hello! I am your AI assistant. How can I help you today?", isMe: false, time: "10:00 AM" }
   ]);
@@ -88,7 +88,11 @@ export default function ChatThread() {
         let responseText = "";
         if (modelReady) {
           // Native Kotlin Offline Inference
-          responseText = await OnDeviceAI.generateResponse(userMsg.text);
+          let prompt = userMsg.text;
+          if (petsContext) {
+            prompt = `System: You are the PetBuddy AI assistant. Here is the list of pets currently available in our database: ${petsContext}. Use this data to help the user. \n\nUser: ${userMsg.text}`;
+          }
+          responseText = await OnDeviceAI.generateResponse(prompt);
         } else {
           // Cloud Fallback Simulation (hitting FastAPI)
           await new Promise(r => setTimeout(r, 1500));

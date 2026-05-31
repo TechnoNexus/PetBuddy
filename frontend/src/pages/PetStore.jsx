@@ -24,7 +24,29 @@ const PetStore = () => {
   };
 
   const handleRemoveFromCart = (productId) => setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
-  const handleCheckout = () => navigate('/checkout', { state: { cartItems } });
+  const handleCheckout = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/api/store/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          items: cartItems.map(item => ({ product_id: item.id, quantity: item.quantity }))
+        })
+      });
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert('Failed to initialize checkout: ' + (data.detail || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error during checkout');
+    }
+  };
 
   const [products, setProducts] = useState({ food: [], clothes: [], accessories: [] });
   const [loading, setLoading] = useState(true);

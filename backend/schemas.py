@@ -210,9 +210,13 @@ class OrderItemCreate(BaseModel):
     quantity: int = Field(..., ge=1)
 
 
+class CheckoutSessionCreate(BaseModel):
+    items: List[OrderItemCreate]
+
+
 class OrderCreate(BaseModel):
     items: List[OrderItemCreate]
-    shipping_address: str
+    shipping_address: Optional[str] = None
 
 
 class OrderItemResponse(BaseModel):
