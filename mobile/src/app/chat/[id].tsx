@@ -35,7 +35,20 @@ export default function ChatThread() {
       const modelPath = FileSystem.documentDirectory + 'gemma.bin';
       
       const fileInfo = await FileSystem.getInfoAsync(modelPath);
-      if (!fileInfo.exists) {
+      
+      // If the file exists but is too small (e.g., a 404 HTML page or corrupted download), delete it.
+      // The Gemma 2B model should be ~1.35 GB. We'll check if it's at least 1 GB (1000000000 bytes).
+      let shouldDownload = true;
+      if (fileInfo.exists && !fileInfo.isDirectory) {
+        if (fileInfo.size > 1000000000) {
+          shouldDownload = false;
+        } else {
+          console.log('Found corrupted or incomplete model file. Deleting...');
+          await FileSystem.deleteAsync(modelPath, { idempotent: true });
+        }
+      }
+
+      if (shouldDownload) {
         // Real download implementation using expo-file-system
         downloadResumableRef.current = FileSystem.createDownloadResumable(
           modelUrl,
