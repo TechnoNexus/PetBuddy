@@ -114,6 +114,21 @@ export default function PetsScreen() {
           <Text style={styles.subtitle}>Use the filters below to find the perfect companion.</Text>
         </View>
 
+        {/* USP AI Banner */}
+        <TouchableOpacity 
+          style={styles.uspBanner} 
+          onPress={() => router.push('/chat/ai?name=AI%20Assistant')}
+        >
+          <View style={styles.uspContent}>
+            <Ionicons name="hardware-chip" size={32} color="white" />
+            <View style={{ marginLeft: 15, flex: 1 }}>
+              <Text style={styles.uspTitle}>100% Free Offline AI Chat</Text>
+              <Text style={styles.uspDesc}>Talk to our private, on-device AI assistant about pet adoption!</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={24} color="white" />
+          </View>
+        </TouchableOpacity>
+
         {/* AI Toggle Section */}
         <View style={styles.aiToggleContainer}>
           <Ionicons name="sparkles" size={20} color="#7c3aed" style={{ marginRight: 10 }} />
@@ -214,6 +229,10 @@ const styles = StyleSheet.create({
   header: { padding: 20, paddingTop: 60, paddingBottom: 10 },
   title: { fontSize: 32, fontWeight: '800', color: '#1e293b', marginBottom: 5 },
   subtitle: { fontSize: 16, color: '#64748b', marginBottom: 10 },
+  uspBanner: { marginHorizontal: 20, marginBottom: 20, backgroundColor: '#7c3aed', borderRadius: 16, padding: 20, shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 15, elevation: 8 },
+  uspContent: { flexDirection: 'row', alignItems: 'center' },
+  uspTitle: { color: 'white', fontSize: 18, fontWeight: '800', marginBottom: 4 },
+  uspDesc: { color: 'rgba(255,255,255,0.8)', fontSize: 13, lineHeight: 18 },
   filterSection: { paddingHorizontal: 20, marginBottom: 20 },
   filterInput: { backgroundColor: 'white', padding: 12, paddingHorizontal: 15, borderRadius: 20, marginRight: 10, minWidth: 120, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
   clearBtn: { alignSelf: 'flex-start', marginTop: 15, backgroundColor: '#f43f5e', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 15 },
