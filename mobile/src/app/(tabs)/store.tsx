@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, Act
 import { FontAwesome } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { getApiBase } from '../../services/apiBase';
+import { supabase } from '../../supabaseClient';
 
 export default function StoreScreen() {
   const [category, setCategory] = useState('food');
@@ -42,9 +43,18 @@ export default function StoreScreen() {
       return;
     }
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        Alert.alert('Authentication Required', 'Please log in to checkout.');
+        return;
+      }
+
       const response = await fetch(`${getApiBase()}/api/store/create-checkout-session`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ items: cart.map(item => ({ product_id: item.id, quantity: item.quantity })) })
       });
       const data = await response.json();
