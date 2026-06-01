@@ -129,6 +129,7 @@ async def create_checkout_session(
             cancel_url=f"{frontend_url}/store",
             client_reference_id=str(order.id),
             shipping_address_collection={"allowed_countries": ["US", "CA", "GB", "AU"]},
+            allow_promotion_codes=True,
         )
 
         # Update order with stripe session id

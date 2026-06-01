@@ -227,6 +227,14 @@ export default function PetsScreen() {
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* FAB to add a pet */}
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => router.push('/add-pet')}
+      >
+        <Ionicons name="add" size={30} color="white" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -258,5 +266,6 @@ const styles = StyleSheet.create({
   petLocation: { fontSize: 12, color: '#94a3b8', marginBottom: 10, marginTop: 2, textTransform: 'uppercase', fontWeight: '600' },
   petDesc: { fontSize: 15, color: '#475569', lineHeight: 22 },
   adoptButton: { backgroundColor: '#7c3aed', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 },
-  adoptButtonText: { color: 'white', fontWeight: '700' }
+  adoptButtonText: { color: 'white', fontWeight: '700' },
+  fab: { position: 'absolute', right: 20, bottom: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#f43f5e', justifyContent: 'center', alignItems: 'center', shadowColor: '#f43f5e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8 }
 });

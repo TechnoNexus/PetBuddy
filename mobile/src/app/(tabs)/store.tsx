@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { getApiBase } from '../../services/apiBase';
@@ -10,6 +10,7 @@ export default function StoreScreen() {
   const [cart, setCart] = useState([]);
   const [productsData, setProductsData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isCartVisible, setCartVisible] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -35,6 +36,18 @@ export default function StoreScreen() {
       return [...prev, { ...product, quantity: 1 }];
     });
     Alert.alert('Added', `${product.name} added to cart.`);
+  };
+
+  const updateQuantity = (productId, delta) => {
+    setCart(prev => {
+      return prev.map(item => {
+        if (item.id === productId) {
+          const newQuantity = item.quantity + delta;
+          return { ...item, quantity: newQuantity > 0 ? newQuantity : 0 };
+        }
+        return item;
+      }).filter(item => item.quantity > 0);
+    });
   };
 
   const handleCheckout = async () => {
@@ -64,6 +77,7 @@ export default function StoreScreen() {
           // Can check status, maybe clear cart if successful in real app
           // For now we clear cart on success
           setCart([]);
+          setCartVisible(false);
         }
       } else {
         Alert.alert('Error', 'Failed to initialize checkout.');
@@ -75,6 +89,7 @@ export default function StoreScreen() {
   };
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const displayedProducts = productsData.filter(p => p.category.toLowerCase().includes(category.toLowerCase()));
 
@@ -85,7 +100,7 @@ export default function StoreScreen() {
                 <Text style={styles.title}>Pet Store</Text>
                 <Text style={styles.subtitle}>Premium supplies for companions.</Text>
             </View>
-            <TouchableOpacity style={styles.cartBtn} onPress={handleCheckout}>
+            <TouchableOpacity style={styles.cartBtn} onPress={() => setCartVisible(true)}>
                 <FontAwesome name="shopping-cart" size={24} color="#7c3aed" />
                 {cartCount > 0 && (
                     <View style={styles.badge}>
@@ -132,6 +147,60 @@ export default function StoreScreen() {
                 ))
             )}
         </ScrollView>
+
+        <Modal visible={isCartVisible} animationType="slide" transparent={true}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Your Cart</Text>
+                <TouchableOpacity onPress={() => setCartVisible(false)}>
+                  <FontAwesome name="times" size={24} color="#1e293b" />
+                </TouchableOpacity>
+              </View>
+
+              {cart.length === 0 ? (
+                <View style={styles.emptyCart}>
+                  <Text style={styles.emptyCartText}>Your cart is empty.</Text>
+                </View>
+              ) : (
+                <ScrollView style={styles.cartList}>
+                  {cart.map(item => (
+                    <View key={item.id} style={styles.cartItem}>
+                      <Image source={{ uri: item.image_url || 'https://via.placeholder.com/150' }} style={styles.cartItemImage} />
+                      <View style={styles.cartItemDetails}>
+                        <Text style={styles.cartItemName}>{item.name}</Text>
+                        <Text style={styles.cartItemPrice}>${(item.price * item.quantity).toFixed(2)}</Text>
+                      </View>
+                      <View style={styles.quantityControls}>
+                        <TouchableOpacity style={styles.qtyBtn} onPress={() => updateQuantity(item.id, -1)}>
+                          <FontAwesome name="minus" size={12} color="#1e293b" />
+                        </TouchableOpacity>
+                        <Text style={styles.qtyText}>{item.quantity}</Text>
+                        <TouchableOpacity style={styles.qtyBtn} onPress={() => updateQuantity(item.id, 1)}>
+                          <FontAwesome name="plus" size={12} color="#1e293b" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+
+              <View style={styles.cartFooter}>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total:</Text>
+                  <Text style={styles.totalAmount}>${cartTotal.toFixed(2)}</Text>
+                </View>
+                <TouchableOpacity 
+                  style={[styles.checkoutBtn, cart.length === 0 && styles.disabledBtn]} 
+                  onPress={handleCheckout}
+                  disabled={cart.length === 0}
+                >
+                  <Text style={styles.checkoutBtnText}>Proceed to Payment</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
     </View>
   );
 }
@@ -156,5 +225,27 @@ const styles = StyleSheet.create({
   productDesc: { fontSize: 14, color: '#64748b', marginTop: 5 },
   ratingText: { fontSize: 13, color: '#64748b', fontWeight: '600' },
   productPrice: { fontSize: 22, fontWeight: '800', color: '#10b981' },
-  buyButton: { backgroundColor: '#1e293b', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12 }
+  buyButton: { backgroundColor: '#1e293b', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: '80%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 24, fontWeight: '800', color: '#1e293b' },
+  emptyCart: { padding: 40, alignItems: 'center' },
+  emptyCartText: { fontSize: 16, color: '#64748b' },
+  cartList: { marginBottom: 20 },
+  cartItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, backgroundColor: '#f8fafc', padding: 10, borderRadius: 15 },
+  cartItemImage: { width: 60, height: 60, borderRadius: 10 },
+  cartItemDetails: { flex: 1, marginLeft: 15 },
+  cartItemName: { fontSize: 16, fontWeight: '700', color: '#1e293b' },
+  cartItemPrice: { fontSize: 14, fontWeight: '600', color: '#10b981', marginTop: 4 },
+  quantityControls: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 20, padding: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
+  qtyBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center' },
+  qtyText: { marginHorizontal: 10, fontSize: 16, fontWeight: '700' },
+  cartFooter: { borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 20 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  totalLabel: { fontSize: 18, fontWeight: '600', color: '#64748b' },
+  totalAmount: { fontSize: 24, fontWeight: '800', color: '#1e293b' },
+  checkoutBtn: { backgroundColor: '#7c3aed', padding: 18, borderRadius: 15, alignItems: 'center' },
+  checkoutBtnText: { color: 'white', fontSize: 18, fontWeight: '700' },
+  disabledBtn: { backgroundColor: '#cbd5e1' }
 });
