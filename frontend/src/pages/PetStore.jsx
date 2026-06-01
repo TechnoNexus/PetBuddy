@@ -25,12 +25,18 @@ const PetStore = () => {
 
   const handleRemoveFromCart = (productId) => setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
   const handleCheckout = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('You must be logged in to checkout. Please log in first!');
+      navigate('/login');
+      return;
+    }
     try {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}/api/store/create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           items: cartItems.map(item => ({ product_id: item.id, quantity: item.quantity }))

@@ -5,7 +5,7 @@ Products listing and (later) order management.
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -64,6 +64,7 @@ async def get_product(product_id: UUID, db: Session = Depends(get_db)):
 @router.post("/create-checkout-session")
 async def create_checkout_session(
     checkout_data: CheckoutSessionCreate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -114,7 +115,11 @@ async def create_checkout_session(
         db.refresh(order)
 
         # Create Stripe Checkout Session
-        frontend_url = os.getenv("VITE_FRONTEND_URL", "http://localhost:5173")
+        origin = request.headers.get("origin") or request.headers.get("referer")
+        if origin:
+            frontend_url = origin.rstrip("/")
+        else:
+            frontend_url = os.getenv("VITE_FRONTEND_URL", "http://localhost:5173")
         
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
