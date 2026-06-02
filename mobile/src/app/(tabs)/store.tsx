@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { getApiBase } from '../../services/apiBase';
 import { supabase } from '../../supabaseClient';
 
@@ -68,7 +69,11 @@ export default function StoreScreen() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ items: cart.map(item => ({ product_id: item.id, quantity: item.quantity })) })
+        body: JSON.stringify({ 
+          items: cart.map(item => ({ product_id: item.id, quantity: item.quantity })),
+          success_url: Linking.createURL('order-success') + '?session_id={CHECKOUT_SESSION_ID}',
+          cancel_url: Linking.createURL('store')
+        })
       });
       const data = await response.json();
       if (data.url) {

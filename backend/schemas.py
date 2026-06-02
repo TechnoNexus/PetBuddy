@@ -212,6 +212,8 @@ class OrderItemCreate(BaseModel):
 
 class CheckoutSessionCreate(BaseModel):
     items: List[OrderItemCreate]
+    success_url: Optional[str] = None
+    cancel_url: Optional[str] = None
 
 
 class OrderCreate(BaseModel):

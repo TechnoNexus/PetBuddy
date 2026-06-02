@@ -121,12 +121,15 @@ async def create_checkout_session(
         else:
             frontend_url = os.getenv("VITE_FRONTEND_URL", "http://localhost:5173")
         
+        success_url = checkout_data.success_url or f"{frontend_url}/order-success?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = checkout_data.cancel_url or f"{frontend_url}/store"
+
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=line_items,
             mode="payment",
-            success_url=f"{frontend_url}/order-success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{frontend_url}/store",
+            success_url=success_url,
+            cancel_url=cancel_url,
             client_reference_id=str(order.id),
             shipping_address_collection={"allowed_countries": ["US", "CA", "GB", "AU"]},
             allow_promotion_codes=True,
