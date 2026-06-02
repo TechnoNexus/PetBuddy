@@ -20,7 +20,7 @@ This document outlines the strategic plan for PetBuddy's evolution from a protot
 - [x] **Shelter Accounts**: Created RBAC (Role-Based Access Control) in `profiles` to differentiate between Adopters and Shelter Admins. Also added full password recovery / reset flow for all accounts.
 
 ## Phase 4: Mobile App & Production Deployment (Completed)
-- [x] **Mobile Application**: Created a React Native Android application using Expo.
+- [x] **Mobile Application**: Created a React Native Android application using Expo. Includes full support for browsing pets, adding pets, a native Cart UI, and integrated Stripe Payments with deep linking and promo codes.
 - [x] **Containerization & Deployment**: Deployed frontend to Cloudflare Pages and FastAPI backend to Railway.
 - [x] **Mobile Release & Deep Linking**: Generated a production `.aab` Android build for the Google Play Store and successfully configured Supabase Google OAuth deep linking.
 
