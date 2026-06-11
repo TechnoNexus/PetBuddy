@@ -7,17 +7,20 @@ import {
   Typography,
   Box,
   Button,
-  ImageList,
-  ImageListItem,
   Chip,
   Divider,
-  Paper
+  Paper,
+  Stack,
+  useTheme
 } from '@mui/material';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import AdoptionForm from '../components/AdoptionForm';
 
 const PetDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const theme = useTheme();
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
@@ -38,6 +41,7 @@ const PetDetail = () => {
           breed: data.breed || data.species,
           age: data.age,
           description: data.description,
+          location: data.location || "Hamilton, Ontario",
           images: data.photos && data.photos.length > 0 
             ? data.photos.map(p => p.url) 
             : ["https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800"],
@@ -98,94 +102,167 @@ const PetDetail = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Grid container spacing={4}>
-        <Grid item xs={12} md={8}>
-          <Box sx={{ mb: 3 }}>
-            <img
+    <Container maxWidth="lg" sx={{ py: 6 }}>
+      <Grid container columns={12} spacing={6}>
+        {/* Left Panel - Image Gallery */}
+        <Grid item xs={12} md={6}>
+          <Box sx={{ position: 'sticky', top: 24 }}>
+            <Box
+              component="img"
               src={pet.images[selectedImage]}
               alt={pet.name}
-              style={{ width: '100%', borderRadius: 8, maxHeight: 500, objectFit: 'cover' }}
+              sx={{
+                width: '100%',
+                aspectRatio: '4/3',
+                objectFit: 'cover',
+                borderRadius: '24px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                mb: 2,
+                transition: 'transform 0.3s ease',
+              }}
             />
+            {pet.images.length > 1 && (
+              <Stack direction="row" spacing={2} sx={{ overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { height: 6 }, '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4 } }}>
+                {pet.images.map((img, index) => (
+                  <Box
+                    key={index}
+                    onClick={() => setSelectedImage(index)}
+                    component="img"
+                    src={img}
+                    alt={`${pet.name} thumbnail ${index + 1}`}
+                    sx={{
+                      width: 80,
+                      height: 80,
+                      objectFit: 'cover',
+                      borderRadius: '16px',
+                      cursor: 'pointer',
+                      border: selectedImage === index ? `3px solid ${theme.palette.primary.main}` : '3px solid transparent',
+                      opacity: selectedImage === index ? 1 : 0.7,
+                      transition: 'all 0.2s ease',
+                      flexShrink: 0,
+                      '&:hover': { opacity: 1 }
+                    }}
+                  />
+                ))}
+              </Stack>
+            )}
           </Box>
-          <ImageList cols={3} gap={8}>
-            {pet.images.map((img, index) => (
-              <ImageListItem
-                key={index}
-                onClick={() => setSelectedImage(index)}
-                sx={{
-                  cursor: 'pointer',
-                  border: selectedImage === index ? 2 : 0,
-                  borderColor: 'primary.main',
-                  borderRadius: 1
-                }}
-              >
-                <img
-                  src={img}
-                  alt={`${pet.name} ${index + 1}`}
-                  style={{ borderRadius: 4 }}
-                />
-              </ImageListItem>
-            ))}
-          </ImageList>
         </Grid>
 
-        <Grid item xs={12} md={4}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="h4" gutterBottom>{pet.name}</Typography>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              {pet.breed} • {pet.age} years old
+        {/* Right Panel - Info & Actions */}
+        <Grid item xs={12} md={6}>
+          <Box sx={{ position: 'sticky', top: 24 }}>
+            {/* Header */}
+            <Typography variant="h2" sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, mb: 0.5, letterSpacing: '-0.5px' }}>
+              {pet.name}
+            </Typography>
+            <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 600, mb: 3 }}>
+              {pet.location}
             </Typography>
 
-            <Box sx={{ my: 2 }}>
-              {pet.vaccinated && <Chip label="Vaccinated" color="success" sx={{ mr: 1 }} />}
-              {pet.neutered && <Chip label="Neutered" color="info" />}
-            </Box>
+            {/* Glassmorphic Pills */}
+            <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 4 }}>
+              {[
+                { label: pet.breed, color: '#f3e8ff', textColor: '#7e22ce' },
+                { label: `${pet.age} years`, color: '#e0f2fe', textColor: '#0369a1' },
+                { label: pet.species, color: '#dcfce7', textColor: '#15803d' },
+                pet.neutered && { label: 'Neutered', color: 'rgba(255,255,255,0.15)', textColor: 'text.primary' },
+                pet.vaccinated && { label: 'Vaccinated', color: 'rgba(255,255,255,0.15)', textColor: 'text.primary' },
+              ].filter(Boolean).map((chip, idx) => (
+                <Chip
+                  key={idx}
+                  label={chip.label}
+                  sx={{
+                    backgroundColor: chip.color,
+                    color: chip.textColor,
+                    fontWeight: 700,
+                    fontSize: '0.875rem',
+                    borderRadius: '12px',
+                    px: 1,
+                    py: 2.5,
+                    backdropFilter: 'blur(10px)',
+                    border: chip.color.includes('rgba') ? '1px solid rgba(0,0,0,0.08)' : 'none',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                  }}
+                />
+              ))}
+            </Stack>
 
-            <Typography variant="body1" paragraph>
-              {pet.description}
-            </Typography>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Typography variant="h6" gutterBottom>Details</Typography>
-            {Object.entries(pet.details).map(([key, value]) => (
-              <Box key={key} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography color="text.secondary" sx={{ textTransform: 'capitalize' }}>
-                  {key}:
-                </Typography>
-                <Typography>{value}</Typography>
-              </Box>
-            ))}
-
-            <Divider sx={{ my: 2 }} />
-
-            <Typography variant="h6" gutterBottom>Owner</Typography>
-            <Typography variant="body1">{pet.owner.name}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {pet.owner.responseTime}
-            </Typography>
-
-            <Box sx={{ mt: 3 }}>
+            {/* Persistent Core CTA Row */}
+            <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: '24px', background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.3)', boxShadow: '0 8px 32px rgba(0,0,0,0.05)' }}>
               <Button
                 variant="contained"
                 fullWidth
                 size="large"
-                sx={{ mb: 2 }}
+                startIcon={<FavoriteIcon />}
                 onClick={handleAdoptClick}
+                sx={{
+                  mb: 2,
+                  py: 1.8,
+                  borderRadius: '16px',
+                  fontWeight: 800,
+                  fontSize: '1.1rem',
+                  textTransform: 'none',
+                  background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
+                  boxShadow: '0 8px 20px rgba(139, 92, 246, 0.3)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 12px 24px rgba(139, 92, 246, 0.4)',
+                  }
+                }}
               >
-                Apply for Adoption
+                Start Adoption Application
               </Button>
               <Button
                 variant="outlined"
                 fullWidth
                 size="large"
+                startIcon={<ChatBubbleOutlineIcon />}
                 onClick={handleContactOwner}
+                sx={{
+                  py: 1.5,
+                  borderRadius: '16px',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  textTransform: 'none',
+                  borderWidth: '2px',
+                  '&:hover': { borderWidth: '2px' }
+                }}
               >
-                Contact Owner
+                Chat with Shelter Staff
               </Button>
+            </Paper>
+
+            {/* Story Body */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h5" sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, mb: 2 }}>
+                Meet {pet.name}
+              </Typography>
+              <Typography variant="body1" sx={{ color: 'text.secondary', lineHeight: 1.7, fontSize: '1.05rem', whiteSpace: 'pre-line' }}>
+                {pet.description || "This beautiful pet is looking for a loving home."}
+              </Typography>
             </Box>
-          </Paper>
+
+            <Divider sx={{ my: 4, opacity: 0.6 }} />
+
+            {/* Details Table */}
+            <Typography variant="h5" sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, mb: 3 }}>
+              Pet Details
+            </Typography>
+            <Grid container spacing={2}>
+              {Object.entries(pet.details).map(([key, value]) => (
+                <Grid item xs={6} key={key}>
+                  <Paper elevation={0} sx={{ p: 2, borderRadius: '16px', bgcolor: 'rgba(0,0,0,0.02)' }}>
+                    <Typography color="text.secondary" sx={{ textTransform: 'capitalize', fontSize: '0.875rem', fontWeight: 600, mb: 0.5 }}>
+                      {key}
+                    </Typography>
+                    <Typography sx={{ fontWeight: 700 }}>{value}</Typography>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
         </Grid>
       </Grid>
 
