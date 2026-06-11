@@ -14,7 +14,7 @@ const PetCard = ({ pet, onViewDetails }) => {
       <Box sx={{ position: 'relative', paddingTop: '75%' }}>
         <CardMedia
           component="img"
-          image={pet.photos?.[0] || pet.image || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800"}
+          image={pet.photos?.[0]?.url || pet.image || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=800"}
           alt={pet.name}
           sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         />

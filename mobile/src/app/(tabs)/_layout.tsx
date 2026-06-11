@@ -1,17 +1,24 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, Platform, View } from 'react-native';
+import { Colors } from '../../constants/theme';
 
 export default function TabLayout() {
   return (
     <Tabs screenOptions={{
-      tabBarActiveTintColor: '#7c3aed',
+      tabBarActiveTintColor: Colors.light.primary,
       headerShown: false,
       tabBarStyle: {
+        position: 'absolute',
         borderTopWidth: 0,
         elevation: 0,
-        shadowOpacity: 0.05,
-        height: 60,
+        backgroundColor: 'transparent',
+        height: Platform.OS === 'ios' ? 85 : 65,
+        paddingBottom: Platform.OS === 'ios' ? 25 : 10,
       },
+      tabBarBackground: () => (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.9)' }]} />
+      ),
       animation: 'shift',
     }}>
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} /> }} />

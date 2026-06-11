@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPets } from '../services/api';
+import { getPets, scavengeInternet } from '../services/api';
 import {
   Container,
   Grid,
   Typography,
   Box,
+  Button,
   TextField,
   MenuItem,
   FormControl,
@@ -13,16 +14,34 @@ import {
   Select,
   Chip,
   Stack,
-  Paper
+  Paper,
+  Card,
+  CardContent,
+  CardActions,
+  Alert,
+  CircularProgress,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import ImageNotSupportedIcon from '@mui/icons-material/ImageNotSupported';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PetCard from '../components/PetCard';
+import AdoptionForm from '../components/AdoptionForm';
 
 const Pets = () => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState({ species: '', breed: '', age: '', location: '' });
-
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [aiMode, setAiMode] = useState(false);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiResults, setAiResults] = useState([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [hasSearchedAi, setHasSearchedAi] = useState(false);
+  const [selectedPet, setSelectedPet] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   useEffect(() => {
     const fetchPets = async () => {
@@ -50,8 +69,8 @@ const Pets = () => {
   const filteredPets = pets.filter(pet => {
     return (
       (!filters.species || pet.species.toLowerCase() === filters.species.toLowerCase()) &&
-      (!filters.breed || pet.breed.toLowerCase().includes(filters.breed.toLowerCase())) &&
-      (!filters.age || pet.age.toString() === filters.age) &&
+      (!filters.breed || pet.breed?.toLowerCase().includes(filters.breed.toLowerCase())) &&
+      (!filters.age || pet.age?.toString() === filters.age) &&
       (!filters.location || pet.location?.toLowerCase().includes(filters.location.toLowerCase()))
     );
   });
@@ -62,6 +81,38 @@ const Pets = () => {
 
   const clearFilters = () => {
     setFilters({ species: '', breed: '', age: '', location: '' });
+  };
+
+  const searchAiPets = async () => {
+    if (!aiQuery.trim()) return;
+
+    setAiLoading(true);
+    setAiError('');
+    setHasSearchedAi(true);
+    try {
+      const response = await scavengeInternet(aiQuery.trim(), 'pets');
+      setAiResults(Array.isArray(response.data.results) ? response.data.results : []);
+    } catch (error) {
+      console.error('AI pet search failed:', error);
+      setAiError(error.response?.data?.detail || error.message || 'AI search failed. Please try again.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const openAdoptionForm = (pet) => {
+    setSelectedPet({
+      ...pet,
+      id: undefined,
+      pet_source: 'external',
+      external_url: pet.url,
+      age: pet.age === 'Unknown' ? undefined : pet.age,
+    });
+    setIsFormOpen(true);
+  };
+
+  const openListing = (url) => {
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -78,53 +129,138 @@ const Pets = () => {
       </Box>
 
       <Container maxWidth="lg">
-        {/* Filters Section */}
         <Paper className="glass-panel" sx={{ p: 4, mb: 6, borderRadius: '24px', border: 'none' }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={3}>
-              <FormControl fullWidth variant="outlined">
-                <InputLabel>Species</InputLabel>
-                <Select name="species" value={filters.species} label="Species" onChange={handleFilterChange} sx={{ borderRadius: '12px' }}>
-                  <MenuItem value="dog">Dogs</MenuItem>
-                  <MenuItem value="cat">Cats</MenuItem>
-                  <MenuItem value="other">Other</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <TextField fullWidth label="Breed" name="breed" value={filters.breed} onChange={handleFilterChange} InputProps={{ sx: { borderRadius: '12px' } }} />
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <FormControl fullWidth>
-                <InputLabel>Age Range</InputLabel>
-                <Select name="age" value={filters.age} label="Age Range" onChange={handleFilterChange} sx={{ borderRadius: '12px' }}>
-                  <MenuItem value="1">1 year</MenuItem>
-                  <MenuItem value="2">2 years</MenuItem>
-                  <MenuItem value="3">3 years</MenuItem>
-                  <MenuItem value="4">4+ years</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <TextField fullWidth label="Location" name="location" value={filters.location} onChange={handleFilterChange} InputProps={{ sx: { borderRadius: '12px' } }} />
-            </Grid>
-          </Grid>
-
-          {/* Active Filters */}
-          <Stack direction="row" spacing={1} sx={{ mt: 3, flexWrap: 'wrap', gap: 1 }}>
-            {Object.entries(filters).map(([key, value]) => (
-              value && (
-                <Chip key={key} label={`${key}: ${value}`} onDelete={() => setFilters(prev => ({ ...prev, [key]: '' }))} sx={{ fontWeight: 500, borderRadius: '8px' }} color="primary" variant="outlined" />
-              )
-            ))}
-            {Object.values(filters).some(Boolean) && (
-              <Chip label="Clear All" onClick={clearFilters} color="secondary" sx={{ fontWeight: 500, borderRadius: '8px' }} />
-            )}
+          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>Search Pets</Typography>
+              <Typography variant="body2" color="text.secondary">Browse PetBuddy listings or search external adoption sources.</Typography>
+            </Box>
+            <FormControlLabel
+              control={<Switch checked={aiMode} onChange={(event) => setAiMode(event.target.checked)} color="primary" />}
+              label={<Stack direction="row" spacing={1} alignItems="center"><AutoAwesomeIcon fontSize="small" /><span>AI Internet Search</span></Stack>}
+              sx={{ m: 0 }}
+            />
           </Stack>
+
+          {aiMode ? (
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                fullWidth
+                label="What are you looking for?"
+                placeholder="Husky in Hamilton"
+                value={aiQuery}
+                onChange={(event) => setAiQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') searchAiPets();
+                }}
+                InputProps={{ sx: { borderRadius: '12px' } }}
+              />
+              <Button
+                variant="contained"
+                startIcon={aiLoading ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeIcon />}
+                onClick={searchAiPets}
+                disabled={aiLoading || !aiQuery.trim()}
+                sx={{ borderRadius: '12px', minWidth: 150 }}
+              >
+                Search
+              </Button>
+            </Stack>
+          ) : (
+            <>
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={3}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel>Species</InputLabel>
+                    <Select name="species" value={filters.species} label="Species" onChange={handleFilterChange} sx={{ borderRadius: '12px' }}>
+                      <MenuItem value="dog">Dogs</MenuItem>
+                      <MenuItem value="cat">Cats</MenuItem>
+                      <MenuItem value="other">Other</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField fullWidth label="Breed" name="breed" value={filters.breed} onChange={handleFilterChange} InputProps={{ sx: { borderRadius: '12px' } }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <FormControl fullWidth>
+                    <InputLabel>Age Range</InputLabel>
+                    <Select name="age" value={filters.age} label="Age Range" onChange={handleFilterChange} sx={{ borderRadius: '12px' }}>
+                      <MenuItem value="1">1 year</MenuItem>
+                      <MenuItem value="2">2 years</MenuItem>
+                      <MenuItem value="3">3 years</MenuItem>
+                      <MenuItem value="4">4+ years</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField fullWidth label="Location" name="location" value={filters.location} onChange={handleFilterChange} InputProps={{ sx: { borderRadius: '12px' } }} />
+                </Grid>
+              </Grid>
+
+              <Stack direction="row" spacing={1} sx={{ mt: 3, flexWrap: 'wrap', gap: 1 }}>
+                {Object.entries(filters).map(([key, value]) => (
+                  value && (
+                    <Chip key={key} label={`${key}: ${value}`} onDelete={() => setFilters(prev => ({ ...prev, [key]: '' }))} sx={{ fontWeight: 500, borderRadius: '8px' }} color="primary" variant="outlined" />
+                  )
+                ))}
+                {Object.values(filters).some(Boolean) && (
+                  <Chip label="Clear All" onClick={clearFilters} color="secondary" sx={{ fontWeight: 500, borderRadius: '8px' }} />
+                )}
+              </Stack>
+            </>
+          )}
         </Paper>
 
-        {/* Pet Cards Grid */}
-        {loading ? (
+        {aiMode ? (
+          <>
+            {aiError && <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }}>{aiError}</Alert>}
+            {aiLoading ? (
+              <Box sx={{ textAlign: 'center', py: 10 }}>
+                <CircularProgress sx={{ mb: 2 }} />
+                <Typography variant="h6" color="text.secondary">Searching adoption sources...</Typography>
+              </Box>
+            ) : hasSearchedAi && aiResults.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 10 }}>
+                <Typography variant="h5" color="text.secondary">No AI results found for this search.</Typography>
+              </Box>
+            ) : (
+              <Grid container spacing={4}>
+                {aiResults.map((pet, index) => (
+                  <Grid item key={pet.id || pet.url || index} xs={12} sm={6} md={4}>
+                    <Card className="hover-lift" sx={{ height: '100%', borderRadius: '20px', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: 'none' }}>
+                      {pet.image ? (
+                        <Box component="img" src={pet.image} alt={pet.name} sx={{ width: '100%', height: 250, objectFit: 'cover' }} />
+                      ) : (
+                        <Box sx={{ height: 250, bgcolor: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'text.secondary', gap: 1 }}>
+                          <ImageNotSupportedIcon />
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>Source photo unavailable</Typography>
+                        </Box>
+                      )}
+                      <CardContent sx={{ p: 3, flexGrow: 1 }}>
+                        <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>{pet.name}</Typography>
+                        <Typography variant="subtitle2" color="primary.main" sx={{ textTransform: 'uppercase', fontWeight: 800, letterSpacing: 1, mb: 1 }}>
+                          {pet.breed || pet.species || 'Adoptable Pet'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{pet.location || pet.shelter || 'Location unavailable'}</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {pet.description || 'Open the source listing for the latest details.'}
+                        </Typography>
+                      </CardContent>
+                      <CardActions sx={{ p: 3, pt: 0, gap: 1, flexDirection: 'column' }}>
+                        <Button fullWidth variant="contained" onClick={() => openAdoptionForm(pet)} sx={{ borderRadius: '12px' }}>
+                          Apply for Adoption
+                        </Button>
+                        <Button fullWidth variant="outlined" endIcon={<OpenInNewIcon />} onClick={() => openListing(pet.url)} sx={{ borderRadius: '12px', mx: '0 !important' }} disabled={!pet.url}>
+                          View Source Listing
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </>
+        ) : loading ? (
           <Box sx={{ textAlign: 'center', py: 10 }}>
             <Typography variant="h6" color="text.secondary">Loading pets...</Typography>
           </Box>
@@ -143,6 +279,12 @@ const Pets = () => {
           </Grid>
         )}
       </Container>
+
+      <AdoptionForm
+        open={isFormOpen}
+        handleClose={() => setIsFormOpen(false)}
+        pet={selectedPet}
+      />
     </Box>
   );
 };

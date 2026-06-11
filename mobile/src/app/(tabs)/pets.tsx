@@ -3,11 +3,14 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, TextInput,
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getApiBase } from '../../services/apiBase';
+import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 
 type ScavengedPet = {
   id?: string;
   image?: string;
+  image_source?: string;
   name?: string;
+  breed?: string;
   location?: string;
   description?: string;
 };
@@ -82,11 +85,16 @@ export default function PetsScreen() {
   useEffect(() => {
     const fetchPets = async () => {
       try {
-        const response = await fetch(`${getApiBase()}/api/pets`);
+        const response = await fetch(`${getApiBase()}/api/pets/`);
         const data = await response.json();
-        setPetsData(data);
+        const backendPets = Array.isArray(data?.pets) ? data.pets : (Array.isArray(data) ? data : []);
+        setPetsData(backendPets.map((pet: any) => ({
+          ...pet,
+          image: pet.image || pet.photos?.[0]?.url,
+        })));
       } catch (e) {
         console.error('Failed to fetch pets:', e);
+        setPetsData([]);
       }
     };
     fetchPets();
@@ -188,7 +196,14 @@ export default function PetsScreen() {
                   style={styles.card}
                   onPress={() => router.push({ pathname: '/scavenge-detail', params: { item: encodeURIComponent(JSON.stringify(pet)) } })}
                 >
-                  <Image source={{ uri: pet.image || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&q=80" }} style={styles.cardImage} />
+                  {pet.image ? (
+                    <Image source={{ uri: pet.image }} style={styles.cardImage} />
+                  ) : (
+                    <View style={styles.photoMissing}>
+                      <Ionicons name="image-outline" size={34} color="#94a3b8" />
+                      <Text style={styles.photoMissingText}>Source photo unavailable</Text>
+                    </View>
+                  )}
                   <View style={styles.cardContent}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={styles.petName} numberOfLines={1}>{pet.name}</Text>
@@ -208,21 +223,30 @@ export default function PetsScreen() {
              <Text style={{ color: '#64748b', fontSize: 16 }}>No pets found matching criteria.</Text>
           </View>
         ) : (
-          filteredPets.map(pet => (
-            <View key={pet.id} style={styles.card}>
-              <Image source={{ uri: pet.image }} style={styles.cardImage} />
-              <View style={styles.cardContent}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={styles.petName}>{pet.name}</Text>
-                    <TouchableOpacity style={styles.adoptButton} onPress={() => router.push(`/adopt?petId=${pet.id}`)}>
-                      <Text style={styles.adoptButtonText}>Adopt</Text>
-                    </TouchableOpacity>
+          filteredPets.map((pet, index) => (
+            <Animated.View key={pet.id} entering={FadeInDown.delay(index * 100).springify()} layout={Layout.springify()} style={styles.cardContainer}>
+              <View style={[styles.glassCard, { backgroundColor: 'rgba(255, 255, 255, 0.85)' }]}>
+                {pet.image ? (
+                  <Image source={{ uri: pet.image }} style={styles.cardImage} />
+                ) : (
+                  <View style={styles.photoMissing}>
+                    <Ionicons name="image-outline" size={34} color="#94a3b8" />
+                    <Text style={styles.photoMissingText}>Photo unavailable</Text>
+                  </View>
+                )}
+                <View style={styles.cardContent}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={styles.petName}>{pet.name}</Text>
+                      <TouchableOpacity style={styles.adoptButton} onPress={() => router.push(`/adopt?petId=${pet.id}`)}>
+                        <Text style={styles.adoptButtonText}>Adopt</Text>
+                      </TouchableOpacity>
+                  </View>
+                  <Text style={styles.petBreed}>{pet.breed} • {pet.age} yrs</Text>
+                  <Text style={styles.petLocation}>{pet.location}</Text>
+                  <Text style={styles.petDesc}>{pet.description}</Text>
                 </View>
-                <Text style={styles.petBreed}>{pet.breed} • {pet.age} yrs</Text>
-                <Text style={styles.petLocation}>{pet.location}</Text>
-                <Text style={styles.petDesc}>{pet.description}</Text>
               </View>
-            </View>
+            </Animated.View>
           ))
         )}
         <View style={{ height: 40 }} />
@@ -259,8 +283,12 @@ const styles = StyleSheet.create({
   aiSearchBtn: { backgroundColor: '#7c3aed', padding: 12, borderRadius: 12, marginLeft: 5 },
   errorText: { color: '#f43f5e', textAlign: 'center', marginHorizontal: 20, marginBottom: 20, fontWeight: '600' },
   card: { marginHorizontal: 20, marginBottom: 20, backgroundColor: 'white', borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
+  cardContainer: { marginHorizontal: 20, marginBottom: 20, borderRadius: 24, overflow: 'hidden', shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' },
+  glassCard: { width: '100%' },
   cardImage: { width: '100%', height: 250 },
-  cardContent: { padding: 20 },
+  photoMissing: { width: '100%', height: 250, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  photoMissingText: { color: '#64748b', fontWeight: '700' },
+  cardContent: { padding: 20, backgroundColor: 'rgba(255, 255, 255, 0.5)' },
   petName: { fontSize: 24, fontWeight: '800', color: '#1e293b' },
   petBreed: { fontSize: 14, color: '#7c3aed', textTransform: 'uppercase', fontWeight: '700', marginTop: 5 },
   petLocation: { fontSize: 12, color: '#94a3b8', marginBottom: 10, marginTop: 2, textTransform: 'uppercase', fontWeight: '600' },

@@ -18,7 +18,7 @@ export default function RootLayout() {
       <AuthProvider>
         <Stack screenOptions={{ 
             headerShown: false,
-            animation: 'default',
+            animation: 'fade_from_bottom',
             fullScreenGestureEnabled: true,
          }}>
             <Stack.Screen name="(tabs)" />

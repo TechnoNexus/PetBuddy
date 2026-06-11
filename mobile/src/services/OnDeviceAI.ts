@@ -9,6 +9,7 @@ class OnDeviceAIService {
    */
   async initialize(modelPath: string): Promise<boolean> {
     try {
+      if (!AicoreModule) throw new Error('Aicore native module is not available');
       console.log('Initializing On-Device AI with model:', modelPath);
       // MediaPipe C++ core cannot read paths starting with file://
       const cleanPath = modelPath.replace('file://', '');
@@ -29,6 +30,7 @@ class OnDeviceAIService {
     if (!this.isInitialized) {
       throw new Error('OnDeviceAIService is not initialized. Call initialize() first.');
     }
+    if (!AicoreModule) throw new Error('Aicore native module is not available');
 
     try {
       const response = await AicoreModule.generateResponse(prompt);

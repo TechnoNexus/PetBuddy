@@ -5,4 +5,11 @@ declare class AicoreModule extends NativeModule<{}> {
   generateResponse(prompt: string): Promise<string>;
 }
 
-export default requireNativeModule<AicoreModule>('Aicore');
+let Aicore: AicoreModule | null = null;
+try {
+  Aicore = requireNativeModule<AicoreModule>('Aicore');
+} catch (e) {
+  console.warn('Native module Aicore not found. On-device AI will not be available.');
+}
+
+export default Aicore as AicoreModule;

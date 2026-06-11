@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image,
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getApiBase } from '../../services/apiBase';
+import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 
 type ServiceResult = {
   id?: string;
   image?: string;
+  image_source?: string;
   name?: string;
   location?: string;
   description?: string;
@@ -43,8 +45,9 @@ export default function ServicesScreen() {
       if (!response.ok) {
         throw new Error(data.detail || `Search failed with status ${response.status}`);
       }
-      console.log('[PetBuddy] Services results count:', data.results?.length);
-      setResults(Array.isArray(data.results) ? data.results : []);
+      const nextResults = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+      console.log('[PetBuddy] Services results count:', nextResults.length);
+      setResults(nextResults);
     } catch (e: any) {
       console.error(e);
       setErrorMsg(
@@ -94,21 +97,28 @@ export default function ServicesScreen() {
         ) : (
           <View style={styles.resultsContainer}>
             {results.map((item, index) => (
-              <TouchableOpacity
-                key={item.id || index}
-                style={styles.card}
-                onPress={() => router.push({ pathname: '/scavenge-detail', params: { item: encodeURIComponent(JSON.stringify(item)) } })}
-              >
-                <Image source={{ uri: item.image || "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=400&q=80" }} style={styles.cardImage} />
-                <View style={styles.cardContent}>
-                  <Text style={styles.itemName}>{item.name}</Text>
-                  <View style={styles.locationRow}>
-                    <Ionicons name="location" size={14} color="#f43f5e" />
-                    <Text style={styles.itemLocation}>{item.location}</Text>
+              <Animated.View key={item.id || index} entering={FadeInDown.delay(index * 100).springify()} layout={Layout.springify()} style={styles.cardContainer}>
+                <TouchableOpacity onPress={() => router.push({ pathname: '/scavenge-detail', params: { item: encodeURIComponent(JSON.stringify(item)) } })}>
+                  <View style={[styles.glassCard, { backgroundColor: 'rgba(255, 255, 255, 0.85)' }]}>
+                    {item.image ? (
+                      <Image source={{ uri: item.image }} style={styles.cardImage} />
+                    ) : (
+                      <View style={styles.photoMissing}>
+                        <Ionicons name="business-outline" size={30} color="#94a3b8" />
+                        <Text style={styles.photoMissingText}>Source photo unavailable</Text>
+                      </View>
+                    )}
+                    <View style={styles.cardContent}>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      <View style={styles.locationRow}>
+                        <Ionicons name="location" size={14} color="#f43f5e" />
+                        <Text style={styles.itemLocation}>{item.location}</Text>
+                      </View>
+                      <Text style={styles.itemDesc} numberOfLines={3}>{item.description}</Text>
+                    </View>
                   </View>
-                  <Text style={styles.itemDesc} numberOfLines={3}>{item.description}</Text>
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
+              </Animated.View>
             ))}
             {!loading && results.length === 0 && query !== '' && (
                <Text style={styles.emptyText}>No services found. Try another search.</Text>
@@ -136,8 +146,12 @@ const styles = StyleSheet.create({
   emptyText: { textAlign: 'center', color: '#64748b', marginTop: 40, fontSize: 16 },
   resultsContainer: { paddingBottom: 20 },
   card: { backgroundColor: 'white', borderRadius: 20, overflow: 'hidden', marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
+  cardContainer: { marginBottom: 20, borderRadius: 24, overflow: 'hidden', shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' },
+  glassCard: { width: '100%' },
   cardImage: { width: '100%', height: 180 },
-  cardContent: { padding: 20 },
+  photoMissing: { width: '100%', height: 180, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  photoMissingText: { color: '#64748b', fontWeight: '700' },
+  cardContent: { padding: 20, backgroundColor: 'rgba(255, 255, 255, 0.4)' },
   itemName: { fontSize: 20, fontWeight: '800', color: '#1e293b', marginBottom: 8 },
   locationRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   itemLocation: { fontSize: 14, color: '#64748b', marginLeft: 5, fontWeight: '600' },

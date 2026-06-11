@@ -41,6 +41,11 @@ export const uploadAvatar = (formData) => api.post('/api/users/avatar', formData
 // Store endpoints
 export const getProducts = (params) => api.get('/api/store/products', { params });
 
+// AI scavenger endpoints
+export const scavengeInternet = (query, searchType = 'pets') => (
+  api.post('/api/ai/scavenge', { query, search_type: searchType })
+);
+
 // Adoption endpoints
 export const submitAdoptionApplication = (applicationData) => api.post('/api/adoptions/', applicationData);
 export const getMyAdoptionApplications = () => api.get('/api/adoptions/');

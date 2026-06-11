@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getApiBase } from '../services/apiBase';
 import { supabase } from '../supabaseClient';
+import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
 
 export default function AddPetScreen() {
   const router = useRouter();
@@ -82,68 +83,82 @@ export default function AddPetScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.formContainer}>
-        <Text style={styles.label}>Name *</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="e.g. Max"
-          value={form.name}
-          onChangeText={(val) => handleChange('name', val)}
-        />
+        <Animated.View entering={FadeInUp.delay(100).springify()}>
+          <Text style={styles.label}>Name *</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="e.g. Max"
+            value={form.name}
+            onChangeText={(val) => handleChange('name', val)}
+          />
+        </Animated.View>
 
-        <Text style={styles.label}>Species *</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="e.g. Dog, Cat"
-          value={form.species}
-          onChangeText={(val) => handleChange('species', val)}
-        />
+        <Animated.View entering={FadeInUp.delay(200).springify()}>
+          <Text style={styles.label}>Species *</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="e.g. Dog, Cat"
+            value={form.species}
+            onChangeText={(val) => handleChange('species', val)}
+          />
+        </Animated.View>
 
-        <Text style={styles.label}>Breed</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="e.g. Golden Retriever"
-          value={form.breed}
-          onChangeText={(val) => handleChange('breed', val)}
-        />
+        <Animated.View entering={FadeInUp.delay(300).springify()}>
+          <Text style={styles.label}>Breed</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="e.g. Golden Retriever"
+            value={form.breed}
+            onChangeText={(val) => handleChange('breed', val)}
+          />
+        </Animated.View>
 
-        <Text style={styles.label}>Age (years)</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="e.g. 2"
-          keyboardType="numeric"
-          value={form.age}
-          onChangeText={(val) => handleChange('age', val)}
-        />
+        <Animated.View entering={FadeInUp.delay(400).springify()}>
+          <Text style={styles.label}>Age (years)</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="e.g. 2"
+            keyboardType="numeric"
+            value={form.age}
+            onChangeText={(val) => handleChange('age', val)}
+          />
+        </Animated.View>
 
-        <Text style={styles.label}>Location</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="e.g. Hamilton, ON"
-          value={form.location}
-          onChangeText={(val) => handleChange('location', val)}
-        />
+        <Animated.View entering={FadeInUp.delay(500).springify()}>
+          <Text style={styles.label}>Location</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="e.g. Hamilton, ON"
+            value={form.location}
+            onChangeText={(val) => handleChange('location', val)}
+          />
+        </Animated.View>
 
-        <Text style={styles.label}>Description</Text>
-        <TextInput 
-          style={[styles.input, styles.textArea]} 
-          placeholder="Tell us about the pet..."
-          multiline
-          numberOfLines={4}
-          value={form.description}
-          onChangeText={(val) => handleChange('description', val)}
-        />
+        <Animated.View entering={FadeInUp.delay(600).springify()}>
+          <Text style={styles.label}>Description</Text>
+          <TextInput 
+            style={[styles.input, styles.textArea]} 
+            placeholder="Tell us about the pet..."
+            multiline
+            numberOfLines={4}
+            value={form.description}
+            onChangeText={(val) => handleChange('description', val)}
+          />
+        </Animated.View>
 
-        <TouchableOpacity 
-          style={[styles.submitButton, loading && styles.disabledButton]} 
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.submitButtonText}>Submit Pet</Text>
-          )}
-        </TouchableOpacity>
+        <Animated.View entering={FadeInUp.delay(700).springify()}>
+          <TouchableOpacity 
+            style={[styles.submitButton, loading && styles.disabledButton]} 
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.submitButtonText}>Submit Pet</Text>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -172,13 +187,18 @@ const styles = StyleSheet.create({
   formContainer: { padding: 20 },
   label: { fontSize: 16, fontWeight: '700', color: '#475569', marginBottom: 8, marginTop: 15 },
   input: { 
-    backgroundColor: 'white', 
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', 
     padding: 15, 
-    borderRadius: 12, 
+    borderRadius: 16, 
     fontSize: 16, 
     color: '#1e293b',
     borderWidth: 1,
-    borderColor: '#e2e8f0'
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2
   },
   textArea: {
     minHeight: 100,

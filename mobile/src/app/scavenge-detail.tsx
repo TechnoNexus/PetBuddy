@@ -16,6 +16,7 @@ export default function ScavengeDetailScreen() {
   } catch (e) {}
 
   const isPet = !!item.breed;
+  const hasImage = !!item.image;
   const openUrl = () => { if (item.url) Linking.openURL(item.url); };
 
   const handleAdopt = () => {
@@ -41,11 +42,18 @@ export default function ScavengeDetailScreen() {
     <View style={styles.container}>
       {/* Hero Image */}
       <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: item.image || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=800&q=80' }}
-          style={styles.heroImage}
-          resizeMode="cover"
-        />
+        {hasImage ? (
+          <Image
+            source={{ uri: item.image }}
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.heroImage, styles.photoMissing]}>
+            <Ionicons name="image-outline" size={44} color="#94a3b8" />
+            <Text style={styles.photoMissingText}>Source photo unavailable</Text>
+          </View>
+        )}
         <View style={styles.imageOverlay} />
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color="white" />
@@ -150,6 +158,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   imageContainer: { position: 'relative' },
   heroImage: { width: '100%', height: 320 },
+  photoMissing: { backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  photoMissingText: { color: '#64748b', fontWeight: '800' },
   imageOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, backgroundColor: 'rgba(0,0,0,0.35)' },
   backBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 55 : 20, left: 20, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 50, padding: 10 },
   heroTextContainer: { position: 'absolute', bottom: 20, left: 24, right: 24 },
@@ -176,4 +186,3 @@ const styles = StyleSheet.create({
   callBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#f0fdf4', paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: '#16a34a' },
   callBtnText: { color: '#16a34a', fontWeight: '700', fontSize: 15 },
 });
-

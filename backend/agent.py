@@ -1,6 +1,11 @@
 import os
 import json
 import traceback
+import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Optional
+from urllib.parse import urljoin
+from urllib.request import Request, urlopen
 from dotenv import load_dotenv
 from ddgs import DDGS
 from google import genai
@@ -13,14 +18,120 @@ print(f"[Agent] Loaded GEMINI_API_KEY: {'SET' if GEMINI_API_KEY else 'MISSING!'}
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 
+COMMON_QUERY_FIXES = {
+    "husly": "husky",
+    "huskie": "husky",
+    "huskies": "husky",
+}
+
+ADOPTION_RESULT_TERMS = (
+    "adopt", "adoption", "rescue", "shelter", "rehoming", "rehome",
+    "humane society", "spca", "petfinder", "adoptapet", "petango",
+)
+
+EXCLUDED_RESULT_TERMS = (
+    "breeder", "puppies for sale", "puppy for sale", "for sale",
+    "marketplace", "pet store", "shop", "stud service",
+)
+
+BAD_IMAGE_TERMS = (
+    "logo", "icon", "banner", "avatar", "default", "placeholder",
+    "sprite", "favicon", "social-share", "apple-touch",
+)
+
+
+def normalize_pet_query(user_query: str) -> str:
+    """Fix common typos and add light location context for local searches."""
+    normalized = user_query.strip()
+    for typo, replacement in COMMON_QUERY_FIXES.items():
+        normalized = re.sub(rf"\b{typo}\b", replacement, normalized, flags=re.IGNORECASE)
+
+    lower = normalized.lower()
+    if "hamilton" in lower and not any(place in lower for place in ("ontario", " on ", ",on", "canada")):
+        normalized = f"{normalized} Ontario Canada"
+
+    return normalized
+
+
 def build_adoption_query(user_query: str) -> str:
     """Append adoption-focused keywords so we skip pet shops."""
+    normalized_query = normalize_pet_query(user_query)
     adoption_keywords = ["adopt", "rescue", "rehome", "shelter", "adoption"]
-    lower = user_query.lower()
+    lower = normalized_query.lower()
     # Only add keywords if none are already present
     if not any(kw in lower for kw in adoption_keywords):
-        return f"{user_query} adopt rescue shelter"
-    return user_query
+        return f"{normalized_query} adopt rescue shelter petfinder adoptapet"
+    return f"{normalized_query} petfinder adoptapet"
+
+
+def result_text(result: dict) -> str:
+    return " ".join(
+        str(result.get(key) or "") for key in ("title", "body", "href")
+    ).lower()
+
+
+def is_adoption_result(result: dict) -> bool:
+    text = result_text(result)
+    if any(term in text for term in EXCLUDED_RESULT_TERMS):
+        return False
+    return any(term in text for term in ADOPTION_RESULT_TERMS)
+
+
+def filter_adoption_results(results: list[dict]) -> list[dict]:
+    filtered = [result for result in results if is_adoption_result(result)]
+    return filtered or results
+
+
+def is_bad_image_url(url: str) -> bool:
+    lower = url.lower()
+    return lower.endswith(".svg") or any(term in lower for term in BAD_IMAGE_TERMS)
+
+
+def extract_meta_image(html: str, base_url: str) -> Optional[str]:
+    patterns = [
+        r'<meta[^>]+(?:property|name)=["\'](?:og:image|twitter:image)["\'][^>]+content=["\']([^"\']+)["\']',
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\'](?:og:image|twitter:image)["\']',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, html, flags=re.IGNORECASE)
+        if match:
+            image_url = urljoin(base_url, match.group(1).replace("&amp;", "&"))
+            if not is_bad_image_url(image_url):
+                return image_url
+    return None
+
+
+def fetch_source_image(url: str, timeout: float = 2.5) -> Optional[str]:
+    if not url or url == "Unknown":
+        return None
+
+    try:
+        request = Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urlopen(request, timeout=timeout) as response:
+            content_type = response.headers.get("content-type", "")
+            if "text/html" not in content_type:
+                return None
+            html = response.read(250_000).decode("utf-8", errors="ignore")
+        return extract_meta_image(html, url)
+    except Exception as e:
+        print(f"[Agent] Source image fetch failed for {url}: {e}")
+        return None
+
+
+def fetch_source_images(urls: list[str]) -> dict[str, str]:
+    unique_urls = [url for url in dict.fromkeys(urls) if url and url != "Unknown"]
+    if not unique_urls:
+        return {}
+
+    images: dict[str, str] = {}
+    with ThreadPoolExecutor(max_workers=min(6, len(unique_urls))) as executor:
+        future_to_url = {executor.submit(fetch_source_image, url): url for url in unique_urls}
+        for future in as_completed(future_to_url):
+            url = future_to_url[future]
+            image = future.result()
+            if image:
+                images[url] = image
+    return images
 
 
 def scavenge_pets(query: str):
@@ -28,9 +139,10 @@ def scavenge_pets(query: str):
     Scavenges for individual adoptable PETS (not shops/websites).
     Returns a list of individual pet profiles.
     """
+    normalized_query = normalize_pet_query(query)
     adoption_query = build_adoption_query(query)
     print(f"[Agent] ===== Pet Adoption Scavenge =====")
-    print(f"[Agent] Original: '{query}' → Enhanced: '{adoption_query}'")
+    print(f"[Agent] Original: '{query}' -> Normalized: '{normalized_query}' -> Enhanced: '{adoption_query}'")
 
     # Step 1: Text search
     try:
@@ -38,44 +150,27 @@ def scavenge_pets(query: str):
         print(f"[Agent] DDG text returned {len(raw_results)} results")
         if not raw_results:
             return []
+        raw_results = filter_adoption_results(raw_results)[:12]
+        print(f"[Agent] Using {len(raw_results)} adoption-focused results")
     except Exception as e:
         print(f"[Agent] DDG Text FAILED: {e}")
         traceback.print_exc()
         return []
 
-    # Step 2: One bulk image search keeps the endpoint fast enough for mobile.
-    image_urls = []
-    try:
-        breed_img_query = f"{query} dog cat pet adoption photo shelter"
-        print(f"[Agent] Image search query: '{breed_img_query}'")
-        img_results = list(
-            DDGS().images(
-                breed_img_query,
-                max_results=12,
-                safesearch='moderate',
-                type_image='photo',
-            )
-        )
-        image_urls = [
-            r.get('image') for r in img_results
-            if r.get('image') and not any(
-                skip in r.get('image', '').lower()
-                for skip in ['logo', 'icon', 'banner', 'ad', 'food', 'ice']
-            )
-        ]
-        print(f"[Agent] DDG images returned {len(image_urls)} filtered results")
-    except Exception as e:
-        print(f"[Agent] DDG Image search failed (non-fatal): {e}")
-
     context = ""
-    for r in raw_results:
-        context += f"Title: {r.get('title')}\nURL: {r.get('href')}\nSnippet: {r.get('body')}\n\n"
+    for index, r in enumerate(raw_results, start=1):
+        context += (
+            f"Source #{index}\n"
+            f"Title: {r.get('title')}\n"
+            f"URL: {r.get('href')}\n"
+            f"Snippet: {r.get('body')}\n\n"
+        )
 
     # Step 3: Gemini extracts INDIVIDUAL PET PROFILES
     system_prompt = f"""
 You are an expert pet adoption assistant. Analyze these web search results about adoptable pets.
 
-User is searching for: "{query}"
+User is searching for: "{normalized_query}"
 
 Your ONLY job is to extract INDIVIDUAL ADOPTABLE PETS from these results.
 DO NOT include pet shops, breeders selling pets for profit, or unrelated websites.
@@ -84,16 +179,20 @@ Focus on: animal shelters, rescue organizations, rehoming posts, classified adop
 IMPORTANT RULES:
 - Each JSON object = ONE individual pet, NOT a website
 - The "name" field = the PET's name, not the shelter's name
-- The "description" field = describe THIS PET's personality, story, appearance — NOT the website
-- The "details" field = adoption requirements, health status, what this specific pet needs — NOT generic website info
-- If the snippet mentions a specific pet (e.g. "Max, a 2-year-old husky, needs a loving home"), extract it
-- If no specific pets are named, create entries for shelters that likely have this breed, but set name = "Contact for Available Pets"
+- The "description" field must only contain facts supported by the snippets
+- The "details" field must only contain adoption details, requirements, or health notes supported by the snippets
+- Do not invent names, ages, genders, vaccination status, fees, colors, or personality traits
+- If a source is a search/listing page and no individual pet is named, create one source-grounded object named "Available {normalized_query} listings" and set unknown fields to "Unknown" or null
+- Prefer fewer accurate results over more guessed results
+- Include "source_index" matching the Source # used for the object
+- The "url" must be the exact URL from that source
 
 Respond ONLY with a valid JSON array. No markdown. Just raw JSON.
 
 Each object must have:
 - "id": unique short string
-- "name": the PET's name (e.g. "Max", "Bella", or "Contact for Available Pets")
+- "source_index": integer Source # from the raw results
+- "name": the PET's name, or "Available {normalized_query} listings" when only a listing page is supported
 - "breed": specific breed (e.g. "Siberian Husky", "Husky Mix")
 - "species": "Dog", "Cat", "Rabbit", etc.
 - "age": age string (e.g. "2 years", "8 weeks") or "Unknown"
@@ -109,6 +208,7 @@ Each object must have:
 - "url": direct URL to the listing or shelter
 - "fee": adoption fee (e.g. "$150", "Free") or null
 - "image": null
+- "source_title": source page title
 
 Raw Search Results:
 {context}
@@ -126,24 +226,51 @@ Raw Search Results:
         raw_text = response.text
         print(f"[Agent] Gemini response (first 400 chars): {raw_text[:400]}")
         data = json.loads(raw_text)
+        if not isinstance(data, list):
+            print("[Agent] Gemini response was not a list")
+            return []
         print(f"[Agent] Extracted {len(data)} individual pet profiles")
 
-        # Assign images without per-result network calls; those made mobile searches time out.
-        fallback_images = [
-            'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&q=80',
-            'https://images.unsplash.com/photo-1574158622564-3d6afb141703?w=600&q=80',
-            'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&q=80',
-            'https://images.unsplash.com/photo-1537151608804-ea6f272a728b?w=600&q=80',
-            'https://images.unsplash.com/photo-1548767797-d8c844163c4a?w=600&q=80',
-            'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&q=80',
-        ]
+        source_by_index = {index: result for index, result in enumerate(raw_results, start=1)}
+        source_urls = {result.get('href') for result in raw_results if result.get('href')}
+        cleaned = []
         for i, pet in enumerate(data):
-            if image_urls and i < len(image_urls):
-                pet['image'] = image_urls[i]
-            else:
-                pet['image'] = fallback_images[i % len(fallback_images)]
+            if not isinstance(pet, dict):
+                continue
 
-        return data
+            try:
+                source_index = int(pet.get("source_index"))
+            except (TypeError, ValueError):
+                source_index = None
+            source = source_by_index.get(source_index)
+            if not pet.get("url") and source:
+                pet["url"] = source.get("href")
+            if not pet.get("source_title") and source:
+                pet["source_title"] = source.get("title")
+
+            if pet.get("url") not in source_urls:
+                print(f"[Agent] Skipping result with unsupported URL: {pet.get('url')}")
+                continue
+
+            pet.setdefault("id", f"pet_{i + 1}")
+            if str(pet.get("name", "")).lower().startswith("available "):
+                listing_label = pet.get("breed") or pet.get("species") or "Pet"
+                pet["name"] = f"Available {listing_label} Listings"
+            pet["image"] = None
+            pet["image_source"] = "unavailable"
+            cleaned.append(pet)
+
+        source_images = fetch_source_images([pet.get("url") for pet in cleaned])
+        for pet in cleaned:
+            image = source_images.get(pet.get("url"))
+            if image:
+                pet["image"] = image
+                pet["image_source"] = "listing"
+            else:
+                pet["image"] = None
+                pet["image_source"] = "unavailable"
+
+        return cleaned
     except json.JSONDecodeError as e:
         print(f"[Agent] JSON parse FAILED: {e}")
         return []
@@ -161,24 +288,23 @@ def scavenge_services(query: str):
     print(f"[Agent] Query: '{query}'")
 
     try:
-        raw_results = list(DDGS().text(query, max_results=15))
+        raw_results = list(DDGS().text(query, max_results=8))
         print(f"[Agent] DDG returned {len(raw_results)} results")
         if not raw_results:
             return []
+        raw_results = raw_results[:8]
     except Exception as e:
         print(f"[Agent] DDG FAILED: {e}")
         return []
 
-    image_urls = []
-    try:
-        img_results = list(DDGS().images(query, max_results=15))
-        image_urls = [r.get('image') for r in img_results if r.get('image')]
-    except Exception:
-        pass
-
     context = ""
-    for r in raw_results:
-        context += f"Title: {r.get('title')}\nURL: {r.get('href')}\nSnippet: {r.get('body')}\n\n"
+    for index, r in enumerate(raw_results, start=1):
+        context += (
+            f"Source #{index}\n"
+            f"Title: {r.get('title')}\n"
+            f"URL: {r.get('href')}\n"
+            f"Snippet: {r.get('body')}\n\n"
+        )
 
     system_prompt = f"""
 You are a pet services assistant. Extract real local pet service businesses from these results.
@@ -186,9 +312,12 @@ You are a pet services assistant. Extract real local pet service businesses from
 Query: "{query}"
 
 Respond ONLY with a valid JSON array. No markdown.
+Use only facts supported by the supplied snippets. Do not invent hours, services, phone numbers, or addresses.
+Return at most 8 businesses.
 
 Each object is one business:
 - "id": unique string
+- "source_index": integer Source # from the raw results
 - "name": business name
 - "description": 1-2 sentences about the service
 - "details": longer description with services offered, hours, any notable info
@@ -207,14 +336,35 @@ Raw Results:
             config=types.GenerateContentConfig(response_mime_type="application/json"),
         )
         data = json.loads(response.text)
-        fallbacks = [
-            'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=600&q=80',
-            'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&q=80',
-        ]
+        if not isinstance(data, list):
+            print("[Agent] Services Gemini response was not a list")
+            return []
+
+        source_by_index = {index: result for index, result in enumerate(raw_results, start=1)}
+        source_urls = {result.get('href') for result in raw_results if result.get('href')}
+        cleaned = []
         for i, item in enumerate(data):
-            item['image'] = image_urls[i] if i < len(image_urls) else fallbacks[i % len(fallbacks)]
-        print(f"[Agent] Extracted {len(data)} services")
-        return data
+            if not isinstance(item, dict):
+                continue
+
+            try:
+                source_index = int(item.get("source_index"))
+            except (TypeError, ValueError):
+                source_index = None
+            source = source_by_index.get(source_index)
+            if not item.get("url") and source:
+                item["url"] = source.get("href")
+            if item.get("url") not in source_urls:
+                continue
+
+            item.setdefault("id", f"service_{i + 1}")
+            item["image"] = None
+            item["image_source"] = "unavailable"
+            cleaned.append(item)
+
+        cleaned = cleaned[:8]
+        print(f"[Agent] Extracted {len(cleaned)} services")
+        return cleaned
     except Exception as e:
         print(f"[Agent] Services Gemini FAILED: {e}")
         traceback.print_exc()

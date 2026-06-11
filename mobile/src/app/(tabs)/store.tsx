@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { getApiBase } from '../../services/apiBase';
 import { supabase } from '../../supabaseClient';
+import Animated, { FadeInDown, Layout, ZoomIn } from 'react-native-reanimated';
 
 export default function StoreScreen() {
   const [category, setCategory] = useState('food');
@@ -18,7 +19,7 @@ export default function StoreScreen() {
       try {
         const response = await fetch(`${getApiBase()}/api/store/products`);
         const data = await response.json();
-        setProductsData(data.products || []);
+        setProductsData(Array.isArray(data) ? data : (data.products || []));
       } catch (err) {
         console.error(err);
       } finally {
@@ -131,24 +132,26 @@ export default function StoreScreen() {
             {loading ? (
                 <ActivityIndicator size="large" color="#7c3aed" style={{ marginTop: 50 }} />
             ) : (
-                displayedProducts.map(product => (
-                    <View key={product.id} style={styles.card}>
-                    <Image source={{ uri: product.image_url || 'https://via.placeholder.com/150' }} style={styles.cardImage} />
-                    <View style={styles.cardContent}>
-                        <Text style={styles.productName}>{product.name}</Text>
-                        <Text style={styles.productDesc}>{product.description}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}>
-                            <FontAwesome name="star" size={14} color="#fbbf24" />
-                            <Text style={styles.ratingText}> {product.rating || '4.5'}</Text>
+                displayedProducts.map((product, index) => (
+                    <Animated.View key={product.id} entering={FadeInDown.delay(index * 100).springify()} layout={Layout.springify()} style={styles.cardContainer}>
+                      <View style={[styles.glassCard, { backgroundColor: 'rgba(255, 255, 255, 0.85)' }]}>
+                        <Image source={{ uri: product.image_url || 'https://via.placeholder.com/150' }} style={styles.cardImage} />
+                        <View style={styles.cardContent}>
+                            <Text style={styles.productName}>{product.name}</Text>
+                            <Text style={styles.productDesc}>{product.description}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}>
+                                <FontAwesome name="star" size={14} color="#fbbf24" />
+                                <Text style={styles.ratingText}> {product.rating || '4.5'}</Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 }}>
+                                <Text style={styles.productPrice}>${product.price.toFixed(2)}</Text>
+                                <TouchableOpacity style={styles.buyButton} onPress={() => addToCart(product)}>
+                                <Text style={{ color: 'white', fontWeight: '700' }}>Add to Cart</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 }}>
-                            <Text style={styles.productPrice}>${product.price.toFixed(2)}</Text>
-                            <TouchableOpacity style={styles.buyButton} onPress={() => addToCart(product)}>
-                            <Text style={{ color: 'white', fontWeight: '700' }}>Add to Cart</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                    </View>
+                      </View>
+                    </Animated.View>
                 ))
             )}
         </ScrollView>
@@ -224,8 +227,10 @@ const styles = StyleSheet.create({
   activeTabText: { color: '#7c3aed', fontWeight: '800' },
   grid: { paddingHorizontal: 20, paddingBottom: 40 },
   card: { marginTop: 15, backgroundColor: 'white', borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
+  cardContainer: { marginTop: 15, borderRadius: 24, overflow: 'hidden', shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' },
+  glassCard: { width: '100%' },
   cardImage: { width: '100%', height: 200 },
-  cardContent: { padding: 20 },
+  cardContent: { padding: 20, backgroundColor: 'rgba(255, 255, 255, 0.4)' },
   productName: { fontSize: 20, fontWeight: '800', color: '#1e293b' },
   productDesc: { fontSize: 14, color: '#64748b', marginTop: 5 },
   ratingText: { fontSize: 13, color: '#64748b', fontWeight: '600' },

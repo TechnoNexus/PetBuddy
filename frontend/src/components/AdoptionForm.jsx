@@ -56,11 +56,12 @@ const AdoptionForm = ({ open, handleClose, pet }) => {
     setLoading(true);
     setError(null);
     try {
+      const isExternalPet = pet?.pet_source === 'external' || pet?.external_url || pet?.url;
       const payload = {
-        pet_id: pet?.id,
+        pet_id: isExternalPet ? undefined : pet?.id,
         pet_name: pet?.name,
-        pet_source: pet?.pet_source || 'internal',
-        external_url: pet?.external_url,
+        pet_source: isExternalPet ? 'external' : (pet?.pet_source || 'internal'),
+        external_url: pet?.external_url || pet?.url,
         full_name: formData.name,
         email: formData.email,
         phone: formData.phone,
