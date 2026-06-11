@@ -2,6 +2,7 @@ import os
 import json
 import traceback
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 from urllib.parse import urljoin
@@ -46,9 +47,17 @@ def normalize_pet_query(user_query: str) -> str:
     for typo, replacement in COMMON_QUERY_FIXES.items():
         normalized = re.sub(rf"\b{typo}\b", replacement, normalized, flags=re.IGNORECASE)
 
+    # Fix "on" preposition before location (e.g. "bulldog on hamilton" -> "bulldog in hamilton")
+    normalized = re.sub(r'\bon\s+(hamilton|toronto|ottawa|london)', r'in \1', normalized, flags=re.IGNORECASE)
+
     lower = normalized.lower()
-    if "hamilton" in lower and not any(place in lower for place in ("ontario", " on ", ",on", "canada")):
-        normalized = f"{normalized} Ontario Canada"
+    if "hamilton" in lower:
+        # Only skip appending Ontario if there's a real province/country indicator.
+        # Don't match the preposition "on" (e.g. "bulldog on hamilton").
+        has_province = any(term in lower for term in ("ontario", "canada", "ont."))
+        has_province = has_province or bool(re.search(r'hamilton\s*,?\s*\bon\b', lower))
+        if not has_province:
+            normalized = f"{normalized} Ontario Canada"
 
     return normalized
 
@@ -80,6 +89,30 @@ def is_adoption_result(result: dict) -> bool:
 def filter_adoption_results(results: list[dict]) -> list[dict]:
     filtered = [result for result in results if is_adoption_result(result)]
     return filtered or results
+
+
+def ddg_text_with_retry(query: str, max_results: int = 20, retries: int = 3) -> list[dict]:
+    """DDG text search with retry on failure or empty results."""
+    for attempt in range(retries):
+        try:
+            results = list(DDGS().text(query, max_results=max_results))
+            if results:
+                return results
+            print(f"[Agent] DDG returned 0 results on attempt {attempt + 1}")
+        except Exception as e:
+            print(f"[Agent] DDG attempt {attempt + 1}/{retries} failed: {e}")
+        if attempt < retries - 1:
+            time.sleep(1.5 * (attempt + 1))
+    return []
+
+
+def normalize_url(url: str) -> str:
+    """Normalize URL for comparison."""
+    if not url:
+        return ""
+    url = url.strip().rstrip("/").lower()
+    url = re.sub(r'^(https?://)www\.', r'\1', url)
+    return url
 
 
 def is_bad_image_url(url: str) -> bool:
@@ -144,18 +177,13 @@ def scavenge_pets(query: str):
     print(f"[Agent] ===== Pet Adoption Scavenge =====")
     print(f"[Agent] Original: '{query}' -> Normalized: '{normalized_query}' -> Enhanced: '{adoption_query}'")
 
-    # Step 1: Text search
-    try:
-        raw_results = list(DDGS().text(adoption_query, max_results=20))
-        print(f"[Agent] DDG text returned {len(raw_results)} results")
-        if not raw_results:
-            return []
-        raw_results = filter_adoption_results(raw_results)[:12]
-        print(f"[Agent] Using {len(raw_results)} adoption-focused results")
-    except Exception as e:
-        print(f"[Agent] DDG Text FAILED: {e}")
-        traceback.print_exc()
+    # Step 1: Text search with retry
+    raw_results = ddg_text_with_retry(adoption_query, max_results=20)
+    print(f"[Agent] DDG text returned {len(raw_results)} results")
+    if not raw_results:
         return []
+    raw_results = filter_adoption_results(raw_results)[:12]
+    print(f"[Agent] Using {len(raw_results)} adoption-focused results")
 
     context = ""
     for index, r in enumerate(raw_results, start=1):
@@ -232,7 +260,7 @@ Raw Search Results:
         print(f"[Agent] Extracted {len(data)} individual pet profiles")
 
         source_by_index = {index: result for index, result in enumerate(raw_results, start=1)}
-        source_urls = {result.get('href') for result in raw_results if result.get('href')}
+        source_urls = {normalize_url(result.get('href')) for result in raw_results if result.get('href')}
         cleaned = []
         for i, pet in enumerate(data):
             if not isinstance(pet, dict):
@@ -248,7 +276,7 @@ Raw Search Results:
             if not pet.get("source_title") and source:
                 pet["source_title"] = source.get("title")
 
-            if pet.get("url") not in source_urls:
+            if normalize_url(pet.get("url")) not in source_urls:
                 print(f"[Agent] Skipping result with unsupported URL: {pet.get('url')}")
                 continue
 
@@ -287,15 +315,11 @@ def scavenge_services(query: str):
     print(f"[Agent] ===== Pet Services Scavenge =====")
     print(f"[Agent] Query: '{query}'")
 
-    try:
-        raw_results = list(DDGS().text(query, max_results=8))
-        print(f"[Agent] DDG returned {len(raw_results)} results")
-        if not raw_results:
-            return []
-        raw_results = raw_results[:8]
-    except Exception as e:
-        print(f"[Agent] DDG FAILED: {e}")
+    raw_results = ddg_text_with_retry(query, max_results=8)
+    print(f"[Agent] DDG returned {len(raw_results)} results")
+    if not raw_results:
         return []
+    raw_results = raw_results[:8]
 
     context = ""
     for index, r in enumerate(raw_results, start=1):
@@ -354,7 +378,7 @@ Raw Results:
             source = source_by_index.get(source_index)
             if not item.get("url") and source:
                 item["url"] = source.get("href")
-            if item.get("url") not in source_urls:
+            if normalize_url(item.get("url")) not in source_urls:
                 continue
 
             item.setdefault("id", f"service_{i + 1}")

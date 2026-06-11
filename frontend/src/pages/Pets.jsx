@@ -21,11 +21,16 @@ import {
   Alert,
   CircularProgress,
   FormControlLabel,
-  Switch
+  Switch,
+  Dialog,
+  DialogContent,
+  IconButton,
+  Divider
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ImageNotSupportedIcon from '@mui/icons-material/ImageNotSupported';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import CloseIcon from '@mui/icons-material/Close';
 import PetCard from '../components/PetCard';
 import AdoptionForm from '../components/AdoptionForm';
 
@@ -42,6 +47,7 @@ const Pets = () => {
   const [hasSearchedAi, setHasSearchedAi] = useState(false);
   const [selectedPet, setSelectedPet] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedAiPet, setSelectedAiPet] = useState(null);
 
   useEffect(() => {
     const fetchPets = async () => {
@@ -227,7 +233,7 @@ const Pets = () => {
               <Grid container spacing={4}>
                 {aiResults.map((pet, index) => (
                   <Grid item key={pet.id || pet.url || index} xs={12} sm={6} md={4}>
-                    <Card className="hover-lift" sx={{ height: '100%', borderRadius: '20px', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: 'none' }}>
+                    <Card className="hover-lift" onClick={() => setSelectedAiPet(pet)} sx={{ height: '100%', borderRadius: '20px', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: 'none', cursor: 'pointer' }}>
                       {pet.image ? (
                         <Box component="img" src={pet.image} alt={pet.name} sx={{ width: '100%', height: 250, objectFit: 'cover' }} />
                       ) : (
@@ -237,18 +243,22 @@ const Pets = () => {
                         </Box>
                       )}
                       <CardContent sx={{ p: 3, flexGrow: 1 }}>
-                        <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>{pet.name}</Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.5 }}>{pet.name}</Typography>
                         <Typography variant="subtitle2" color="primary.main" sx={{ textTransform: 'uppercase', fontWeight: 800, letterSpacing: 1, mb: 1 }}>
                           {pet.breed || pet.species || 'Adoptable Pet'}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{pet.location || pet.shelter || 'Location unavailable'}</Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                          {pet.description || 'Open the source listing for the latest details.'}
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mb: 1, gap: 0.5 }}>
+                          {pet.age && pet.age !== 'Unknown' && <Chip label={pet.age} size="small" variant="outlined" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />}
+                          {pet.gender && pet.gender !== 'Unknown' && <Chip label={pet.gender} size="small" variant="outlined" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />}
+                        </Stack>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{pet.shelter || pet.location || 'Location unavailable'}</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {pet.description || 'Click for more details.'}
                         </Typography>
                       </CardContent>
-                      <CardActions sx={{ p: 3, pt: 0, gap: 1, flexDirection: 'column' }}>
-                        <Button fullWidth variant="contained" onClick={() => openAdoptionForm(pet)} sx={{ borderRadius: '12px' }}>
-                          Apply for Adoption
+                      <CardActions sx={{ p: 3, pt: 0, gap: 1, flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+                        <Button fullWidth variant="contained" onClick={() => setSelectedAiPet(pet)} sx={{ borderRadius: '12px' }}>
+                          View Details
                         </Button>
                         <Button fullWidth variant="outlined" endIcon={<OpenInNewIcon />} onClick={() => openListing(pet.url)} sx={{ borderRadius: '12px', mx: '0 !important' }} disabled={!pet.url}>
                           View Source Listing
@@ -279,6 +289,110 @@ const Pets = () => {
           </Grid>
         )}
       </Container>
+
+      {/* AI Pet Detail Dialog */}
+      <Dialog
+        open={!!selectedAiPet}
+        onClose={() => setSelectedAiPet(null)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: '24px', overflow: 'hidden', maxHeight: '90vh' } }}
+      >
+        {selectedAiPet && (
+          <>
+            {selectedAiPet.image ? (
+              <Box component="img" src={selectedAiPet.image} alt={selectedAiPet.name}
+                sx={{ width: '100%', height: 300, objectFit: 'cover' }} />
+            ) : (
+              <Box sx={{ height: 200, bgcolor: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                <ImageNotSupportedIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
+                <Typography variant="body2" color="text.secondary" fontWeight={700}>Source photo unavailable</Typography>
+              </Box>
+            )}
+            <IconButton onClick={() => setSelectedAiPet(null)}
+              sx={{ position: 'absolute', top: 12, right: 12, bgcolor: 'rgba(0,0,0,0.5)', color: 'white', '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' } }}>
+              <CloseIcon />
+            </IconButton>
+
+            <DialogContent sx={{ p: 4 }}>
+              <Typography variant="h4" sx={{ fontWeight: 900, mb: 0.5 }}>{selectedAiPet.name}</Typography>
+              <Typography variant="subtitle1" color="primary.main" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, mb: 2 }}>
+                {selectedAiPet.breed || selectedAiPet.species || 'Adoptable Pet'}
+              </Typography>
+
+              <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 3 }}>
+                {selectedAiPet.age && selectedAiPet.age !== 'Unknown' && (
+                  <Chip label={selectedAiPet.age} size="small" sx={{ fontWeight: 600 }} />
+                )}
+                {selectedAiPet.gender && selectedAiPet.gender !== 'Unknown' && (
+                  <Chip label={selectedAiPet.gender} size="small" sx={{ fontWeight: 600 }} />
+                )}
+                {selectedAiPet.species && (
+                  <Chip label={selectedAiPet.species} size="small" sx={{ fontWeight: 600 }} />
+                )}
+                {selectedAiPet.color && selectedAiPet.color !== 'Unknown' && (
+                  <Chip label={selectedAiPet.color} size="small" sx={{ fontWeight: 600 }} />
+                )}
+                {selectedAiPet.vaccinated === true && (
+                  <Chip label="Vaccinated" size="small" color="success" sx={{ fontWeight: 600 }} />
+                )}
+                {selectedAiPet.neutered === true && (
+                  <Chip label="Neutered" size="small" color="info" sx={{ fontWeight: 600 }} />
+                )}
+                {selectedAiPet.fee && (
+                  <Chip label={selectedAiPet.fee} size="small" color="secondary" sx={{ fontWeight: 600 }} />
+                )}
+              </Stack>
+
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                {selectedAiPet.shelter && (
+                  <Typography variant="body2" color="primary.main" fontWeight={700}>{selectedAiPet.shelter}</Typography>
+                )}
+                {selectedAiPet.shelter && selectedAiPet.location && (
+                  <Typography variant="body2" color="text.disabled">•</Typography>
+                )}
+                {selectedAiPet.location && (
+                  <Typography variant="body2" color="text.secondary" fontWeight={600}>{selectedAiPet.location}</Typography>
+                )}
+              </Stack>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>About {selectedAiPet.name}</Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 2, lineHeight: 1.8 }}>
+                {selectedAiPet.description || 'No description available. Visit the source listing for details.'}
+              </Typography>
+
+              {selectedAiPet.details && (
+                <>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Adoption Details</Typography>
+                  <Typography variant="body1" color="text.secondary" sx={{ mb: 2, lineHeight: 1.8 }}>
+                    {selectedAiPet.details}
+                  </Typography>
+                </>
+              )}
+
+              <Stack spacing={1.5} sx={{ mt: 3 }}>
+                <Button fullWidth variant="contained" onClick={() => { setSelectedAiPet(null); openAdoptionForm(selectedAiPet); }}
+                  sx={{ borderRadius: '12px', py: 1.5, fontWeight: 700 }}>
+                  Apply for Adoption
+                </Button>
+                <Button fullWidth variant="outlined" endIcon={<OpenInNewIcon />} onClick={() => openListing(selectedAiPet.url)}
+                  disabled={!selectedAiPet.url} sx={{ borderRadius: '12px', py: 1.5, fontWeight: 700 }}>
+                  View Source Listing
+                </Button>
+                {selectedAiPet.contact && (
+                  <Button fullWidth variant="outlined" color="success"
+                    onClick={() => window.open(`tel:${selectedAiPet.contact}`)}
+                    sx={{ borderRadius: '12px', py: 1.5, fontWeight: 700 }}>
+                    Contact: {selectedAiPet.contact}
+                  </Button>
+                )}
+              </Stack>
+            </DialogContent>
+          </>
+        )}
+      </Dialog>
 
       <AdoptionForm
         open={isFormOpen}
